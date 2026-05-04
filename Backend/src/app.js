@@ -41,7 +41,9 @@ app.use(helmet({
     noSniff: true,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
-app.use(cors());
+app.use(cors({
+    origin:"https://eqosy.vercel.app"
+}));
 app.use(morgan('dev'));
 app.use(express.json({
     verify: (req, res, buf) => {
