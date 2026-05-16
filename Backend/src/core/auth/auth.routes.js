@@ -15,12 +15,20 @@ import {
     requestAdminForgotPasswordOtpController,
     resetAdminPasswordWithOtpController
 } from './auth.controller.js';
+import {
+    requestUnifiedOtpController,
+    verifyUnifiedOtpController
+} from './unifiedAuth.controller.js';
 import { authMiddleware, requireAdmin } from './auth.middleware.js';
 import { authRateLimiter } from '../../middleware/rateLimit.js';
 
 const router = express.Router();
 
 // router.use(authRateLimiter); // Removed global application to avoid rate-limiting /me or /refresh-token too strictly
+
+// Unified OTP login (Food + Taxi sync)
+router.post('/unified/request-otp', authRateLimiter, requestUnifiedOtpController);
+router.post('/unified/verify-otp', authRateLimiter, verifyUnifiedOtpController);
 
 // User OTP login
 router.post('/user/request-otp', authRateLimiter, requestUserOtpController);

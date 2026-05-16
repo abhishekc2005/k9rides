@@ -12,7 +12,31 @@ import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthCheck } from './config/health.js';
 import { config } from './config/env.js';
 
+const getCorsOrigins = () => {
+    const parsed = String(config.socketCorsOrigin || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+    return parsed.length > 0 ? parsed : ['http://localhost:5173'];
+};
+
 const app = express();
+
+const stripNullsDeep = (value) => {
+    if (Array.isArray(value)) {
+        return value.map(stripNullsDeep);
+    }
+    if (value && typeof value === 'object') {
+        const next = {};
+        for (const [k, v] of Object.entries(value)) {
+            if (v === null) continue;
+            next[k] = stripNullsDeep(v);
+        }
+        return next;
+    }
+    return value;
+};
 
 // Trust first proxy (essential for express-rate-limit if behind a proxy)
 app.set('trust proxy', 1);
@@ -42,7 +66,7 @@ app.use(helmet({
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 app.use(cors({
-    origin:"https://eqosy.vercel.app"
+    origin: getCorsOrigins()
 }));
 app.use(morgan('dev'));
 app.use(express.json({
@@ -60,6 +84,9 @@ app.use((req, _res, next) => {
     req.body = mongoSanitize(req.body);
     req.query = mongoSanitize(req.query);
     req.params = mongoSanitize(req.params);
+    req.body = stripNullsDeep(req.body);
+    req.query = stripNullsDeep(req.query);
+    req.params = stripNullsDeep(req.params);
     next();
 });
 app.use(xssClean());

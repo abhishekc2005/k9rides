@@ -16,7 +16,47 @@ const AUTH = {
   REFRESH_TOKEN: "/food/auth/refresh-token",
   LOGOUT: "/food/auth/logout",
   ME: "/food/auth/me",
+  UNIFIED_REQUEST_OTP: "/auth/unified/request-otp",
+  UNIFIED_VERIFY_OTP: "/auth/unified/verify-otp",
 };
+
+/**
+ * Request Unified OTP for both Food and Taxi.
+ */
+export function requestUnifiedOtp(phone) {
+  const digits = normalizePhone(phone);
+  const normalized = digits.length > USER_PHONE_LENGTH ? digits.slice(-USER_PHONE_LENGTH) : digits;
+  if (normalized.length !== USER_PHONE_LENGTH) {
+    return Promise.reject(new Error("Phone number must be exactly 10 digits"));
+  }
+  return apiClient.post(AUTH.UNIFIED_REQUEST_OTP, { phone: normalized });
+}
+
+/**
+ * Verify Unified OTP for both Food and Taxi.
+ */
+export function verifyUnifiedOtp(phone, otp, ref, name, fcmToken, platform) {
+  const digits = normalizePhone(phone);
+  const normalized = digits.length > USER_PHONE_LENGTH ? digits.slice(-USER_PHONE_LENGTH) : digits;
+  const otpStr = String(otp ?? "").replace(/\D/g, "").slice(0, 4);
+
+  const payload = {
+    phone: normalized,
+    otp: otpStr,
+  };
+
+  const refValue = typeof ref === "string" ? ref.trim() : "";
+  if (refValue) payload.ref = refValue;
+  if (typeof name === "string" && name.trim()) payload.name = name.trim();
+  if (typeof fcmToken === "string" && fcmToken.trim()) {
+    payload.fcmToken = fcmToken.trim();
+    payload.platform = platform === "mobile" ? "mobile" : "web";
+  } else if (platform === "mobile") {
+    payload.platform = "mobile";
+  }
+
+  return apiClient.post(AUTH.UNIFIED_VERIFY_OTP, payload);
+}
 
 /**
  * Normalize phone to digits only (for backend 8–15 digits).
@@ -186,7 +226,7 @@ const BACKOFF_MS = 10000; // 10s wait on 429
 
 function getMeOnce(module) {
   const now = Date.now();
-  
+
   // 1. Check Backoff (e.g. from previous 429)
   const backoff = meBackoff.get(module);
   if (backoff && now < backoff) {

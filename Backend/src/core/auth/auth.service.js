@@ -41,6 +41,20 @@ const normalizePhone10 = (value) => String(value || "").replace(/\D/g, "").slice
 const isDefaultPhone = (inputPhone, defaultPhone) =>
   normalizePhone10(inputPhone) === normalizePhone10(defaultPhone);
 
+const withTimeout = async (promise, timeoutMs, label) => {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const requestUserOtp = async (phone) => {
   if (!phone) {
     throw new ValidationError("Phone is required");
@@ -61,13 +75,21 @@ export const verifyUserOtpAndLogin = async (
   platform,
   name,
 ) => {
+  const loginStart = Date.now();
+  logger.info(`[Auth Verify] Start verifyUserOtpAndLogin phone=${phone}`);
   const result = await verifyOtp(phone, otp);
+  logger.info(
+    `[Auth Verify] OTP checked in ${Date.now() - loginStart}ms phone=${phone} valid=${result.valid}`,
+  );
 
   if (!result.valid) {
     throw new AuthError(result.reason || "OTP verification failed");
   }
 
   let userDoc = await FoodUser.findOne({ phone });
+  logger.info(
+    `[Auth Verify] User lookup done in ${Date.now() - loginStart}ms phone=${phone}`,
+  );
   
   // Ensure user exists and mark as verified on successful OTP.
   // Check if user is new or hasn't provided a name yet
@@ -101,26 +123,17 @@ export const verifyUserOtpAndLogin = async (
     );
   }
 
-  // Update FCM token if provided
+  // Update FCM token in background so login is not blocked on this write.
   if (fcmToken) {
-    let isModified = false;
-    if (platform === "mobile") {
-      if (!userDoc.fcmTokenMobile) userDoc.fcmTokenMobile = [];
-      if (!userDoc.fcmTokenMobile.includes(fcmToken)) {
-        userDoc.fcmTokenMobile.push(fcmToken);
-        isModified = true;
-      }
-    } else {
-      // Default to web if not explicitly mobile
-      if (!userDoc.fcmTokens) userDoc.fcmTokens = [];
-      if (!userDoc.fcmTokens.includes(fcmToken)) {
-        userDoc.fcmTokens.push(fcmToken);
-        isModified = true;
-      }
-    }
-    if (isModified) {
-      await userDoc.save();
-    }
+    const tokenField = platform === "mobile" ? "fcmTokenMobile" : "fcmTokens";
+    void FoodUser.updateOne(
+      { _id: userDoc._id },
+      { $addToSet: { [tokenField]: fcmToken } },
+    ).catch((err) => {
+      logger.warn(
+        `[Auth Verify] FCM token update failed for user ${userDoc._id}: ${err.message}`,
+      );
+    });
   }
 
   // Ensure referralCode exists (used for share links on older accounts).
@@ -213,11 +226,24 @@ export const verifyUserOtpAndLogin = async (
   const ttlMs = ms(config.jwtRefreshExpiresIn || "7d");
   const expiresAt = new Date(Date.now() + ttlMs);
 
-  await FoodRefreshToken.create({
-    userId: user._id,
-    token: refreshToken,
-    expiresAt,
-  });
+  try {
+    await withTimeout(
+      FoodRefreshToken.create({
+        userId: user._id,
+        token: refreshToken,
+        expiresAt,
+      }),
+      1500,
+      "FoodRefreshToken.create",
+    );
+  } catch (err) {
+    logger.warn(
+      `[Auth Verify] Refresh token persistence skipped due to slowdown for phone=${phone}: ${err.message}`,
+    );
+  }
+  logger.info(
+    `[Auth Verify] Login success phone=${phone} total=${Date.now() - loginStart}ms`,
+  );
 
   return { accessToken, refreshToken, user, isNewUser };
 };

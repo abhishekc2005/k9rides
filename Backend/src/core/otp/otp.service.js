@@ -98,6 +98,12 @@ export const createOrUpdateOtp = async (phone) => {
         otp = generateOtpCode();
     }
 
+    // Dev debugging: print generated OTP in backend logs.
+    // Keep this enabled only for local/testing usage.
+    logger.info(`[OTP DEBUG] Generated OTP ${otp} for phone ${phone}`);
+    // eslint-disable-next-line no-console
+    console.log(`[OTP DEBUG] Generated OTP ${otp} for phone ${phone}`);
+
     // Expiry calculation: prioritize seconds, then minutes, then fallback to MS string
     let ttlMs;
     if (config.otpExpirySeconds) {
@@ -150,11 +156,17 @@ export const verifyOtp = async (phone, otp) => {
     record.attempts += 1;
 
     if (record.otp !== otp) {
-        await record.save();
+        // Do not block auth response on attempts write.
+        void record.save().catch((err) => {
+            logger.warn(`[OTP VERIFY] Failed to persist attempts for ${phone}: ${err.message}`);
+        });
         return { valid: false, reason: 'Invalid OTP' };
     }
 
-    await record.deleteOne();
+    // OTP is valid - return immediately and delete in background.
+    void record.deleteOne().catch((err) => {
+        logger.warn(`[OTP VERIFY] Failed to delete OTP record for ${phone}: ${err.message}`);
+    });
     return { valid: true };
 };
 

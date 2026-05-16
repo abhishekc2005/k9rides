@@ -19,6 +19,7 @@ export default defineConfig({
       '@food/api': servicesApi,
       '@food': foodSrc,
       '@delivery': path.resolve(__dirname, './src/modules/DeliveryV2'),
+      '@/assets': path.resolve(__dirname, './src/modules/Taxi/assets'),
       '@': path.resolve(__dirname, './src'),
     },
     dedupe: ['react', 'react-dom', 'react-router-dom'],

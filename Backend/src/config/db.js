@@ -39,3 +39,5 @@ export const disconnectDB = async () => {
     await mongoose.connection.close();
     logger.info('MongoDB connection closed');
 };
+
+export const connectDatabase = connectDB;

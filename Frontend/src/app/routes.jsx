@@ -6,6 +6,7 @@ const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 
 // Lazy load the Food service module (Quick-spicy app)
 const FoodApp = lazy(() => import('../modules/Food/routes'))
+const TaxiApp = lazy(() => import('../modules/Taxi/TaxiApp'))
 const AuthApp = lazy(() => import('../modules/auth/routes'))
 import ProtectedRoute from '@food/components/ProtectedRoute'
 
@@ -23,6 +24,14 @@ const FoodAppWrapper = () => {
   return (
     <Suspense fallback={<PageLoader />}>
       <FoodApp />
+    </Suspense>
+  )
+}
+
+const TaxiAppWrapper = () => {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <TaxiApp />
     </Suspense>
   )
 }
@@ -64,19 +73,19 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Root → Master Landing Page */}
-      <Route path="/" element={<Navigate to="/food/user" replace />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
       {/* Auth Module */}
+      <Route path="/login/*" element={<Suspense fallback={<PageLoader />}><AuthApp /></Suspense>} />
 
 
       {/* Food Module */}
       <Route path="/food/*" element={<FoodAppWrapper />} />
 
-      {/* Global Admin Portal - AdminRouter handles its own protection for sub-routes */}
-      <Route path="/admin/*" element={<AdminRouter />} />
+      {/* Taxi Module */}
+      <Route path="/taxi/*" element={<TaxiAppWrapper />} />
 
-      {/* NEW Delivery V2 (Parallel testing) */}
-      {/* Global Admin Portal - wrap lazy router in Suspense to avoid blank/crash on direct admin URLs */}
+      {/* Global Admin Portal - AdminRouter handles its own protection for sub-routes */}
       <Route
         path="/admin/*"
         element={

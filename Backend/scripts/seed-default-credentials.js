@@ -16,7 +16,7 @@ const DEFAULTS = {
     servicesAccess: ["food", "quickCommerce", "taxi"],
   },
   user: {
-    phone: "7974161582",
+    phone: "9407046608",
     countryCode: "+91",
     name: "Eqosy User",
   },
@@ -171,4 +171,3 @@ run()
   .finally(async () => {
     await mongoose.connection.close();
   });
-

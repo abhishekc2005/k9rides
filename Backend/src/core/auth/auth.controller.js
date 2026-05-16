@@ -43,10 +43,12 @@ export const requestUserOtpController = async (req, res, next) => {
 };
 
 export const verifyUserOtpController = async (req, res, next) => {
+  const startedAt = Date.now();
   try {
     const { phone, otp, ref, fcmToken, platform, name } = validateUserOtpVerifyDto(
       req.body,
     );
+    console.log(`[Auth Verify Controller] START phone=${phone}`);
     const result = await verifyUserOtpAndLogin(
       phone,
       otp,
@@ -55,8 +57,14 @@ export const verifyUserOtpController = async (req, res, next) => {
       platform,
       name,
     );
+    console.log(
+      `[Auth Verify Controller] SUCCESS phone=${phone} duration=${Date.now() - startedAt}ms`,
+    );
     return sendResponse(res, 200, "Login successful", result);
   } catch (error) {
+    console.log(
+      `[Auth Verify Controller] ERROR duration=${Date.now() - startedAt}ms message=${error?.message || "unknown"}`,
+    );
     next(error);
   }
 };

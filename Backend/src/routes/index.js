@@ -18,6 +18,7 @@ import { getQueuesController } from '../controllers/admin.controller.js';
 import { getPublicEnvController } from '../modules/food/landing/controllers/publicEnv.controller.js';
 import webhookRoutes from '../core/payments/routes/webhook.routes.js'; // ✅ NEW
 import searchRoutes from '../modules/food/search/routes/search.routes.js';
+import { taxiRouter } from '../modules/taxi/routes/index.js';
 
 const router = express.Router();
 
@@ -55,5 +56,7 @@ router.use('/fcm-tokens', fcmRoutes);
 // router.get('/env/public', getPublicEnvController);
 
 router.get('/v1/admin/queues', authMiddleware, requireRoles('ADMIN'), getQueuesController);
+
+router.use('/v1/taxi', taxiRouter);
 
 export default router;

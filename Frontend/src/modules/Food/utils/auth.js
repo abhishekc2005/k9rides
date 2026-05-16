@@ -19,7 +19,7 @@ export function decodeToken(token) {
     // Decode base64url encoded payload
     const payload = parts[1];
     const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-    
+
     return decoded;
   } catch (error) {
     console.error('Error decoding token:', error);
@@ -45,7 +45,7 @@ export function getRoleFromToken(token) {
 export function isTokenExpired(token) {
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) return true;
-  
+
   // exp is in seconds, Date.now() is in milliseconds
   return decoded.exp * 1000 < Date.now();
 }
@@ -254,7 +254,7 @@ export function setAuthData(module, token, user, refreshToken = null) {
       localStorage.setItem(refreshTokenKey, refreshToken);
     }
     localStorage.setItem(authKey, 'true');
-    
+
     if (user) {
       try {
         localStorage.setItem(userKey, JSON.stringify(user));
@@ -267,7 +267,7 @@ export function setAuthData(module, token, user, refreshToken = null) {
     // Verify the token was stored correctly
     const storedToken = localStorage.getItem(tokenKey);
     const storedAuth = localStorage.getItem(authKey);
-    
+
     if (storedToken !== token) {
       console.error(`[setAuthData] Token mismatch:`, {
         expected: token?.substring(0, 20) + '...',
@@ -302,7 +302,7 @@ export function setAuthData(module, token, user, refreshToken = null) {
         if (user) {
           localStorage.setItem(`${module}_user`, JSON.stringify(user));
         }
-        
+
         // Verify again after retry
         const storedToken = localStorage.getItem(`${module}_accessToken`);
         if (storedToken !== token) {
@@ -317,4 +317,49 @@ export function setAuthData(module, token, user, refreshToken = null) {
       throw error;
     }
   }
+}
+
+/**
+ * Set unified authentication data for both Food and Taxi modules
+ * @param {Object} data - Unified auth response data
+ */
+export function setUnifiedAuthData(data) {
+  if (!data) return;
+
+  // 1. Set Food Auth Data
+  const foodToken = data.accessToken;
+  const foodUser = data.user;
+  const foodRefreshToken = data.refreshToken;
+  if (foodToken && foodUser) {
+    setAuthData("user", foodToken, foodUser, foodRefreshToken);
+  }
+
+  // 2. Set Taxi Auth Data
+  const taxiAuth = data.taxiAuth;
+  if (taxiAuth && taxiAuth.token && taxiAuth.user) {
+    localStorage.setItem("userToken", taxiAuth.token);
+    localStorage.setItem("userInfo", JSON.stringify(taxiAuth.user));
+    localStorage.setItem("role", "user");
+    localStorage.setItem("chatRole", "user");
+    return;
+  }
+
+  // Fallback bridge: when unified API doesn't return taxiAuth, reuse common USER session
+  // so taxi module does not force a second login.
+  if (foodToken && foodUser) {
+    localStorage.setItem("userToken", foodToken);
+    localStorage.setItem("userInfo", JSON.stringify(foodUser));
+    localStorage.setItem("role", "user");
+    localStorage.setItem("chatRole", "user");
+  }
+}
+
+/**
+ * Check if user is authenticated for both Food and Taxi
+ * @returns {boolean}
+ */
+export function isUnifiedAuthenticated() {
+  const foodToken = localStorage.getItem("user_accessToken");
+  const taxiToken = localStorage.getItem("userToken");
+  return !!(foodToken && taxiToken);
 }

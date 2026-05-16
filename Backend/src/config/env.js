@@ -2,6 +2,19 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const parseOrigins = (value) =>
+    String(value || '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+
+const fallbackCorsOrigins = [
+    ...parseOrigins(process.env.SOCKET_CORS_ORIGIN),
+    ...parseOrigins(process.env.FRONTEND_URL),
+];
+const uniqueCorsOrigins = [...new Set(fallbackCorsOrigins)];
+const resolvedCorsOrigin = uniqueCorsOrigins.length > 0 ? uniqueCorsOrigins.join(',') : '*';
+
 export const config = {
     // Basic server config
     port: process.env.PORT || 5000,
@@ -74,7 +87,7 @@ export const config = {
     firebaseWebVapidKey: process.env.VITE_FIREBASE_VAPID_KEY || process.env.FIREBASE_VAPID_KEY,
 
     // Socket.io
-    socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN || '*',
+    socketCorsOrigin: resolvedCorsOrigin,
 
     // Razorpay (payments)
     razorpayKeyId: process.env.RAZORPAY_KEY_ID,
@@ -87,4 +100,42 @@ export const config = {
     emailUser: process.env.EMAIL_USER,
     emailPass: process.env.EMAIL_PASS ? String(process.env.EMAIL_PASS).replace(/\s/g, '') : '',
     emailFrom: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@example.com'
+};
+
+// Taxi Module Compatibility Export
+export const env = {
+    ...config,
+    // Taxi modules use `env.corsOrigin`; keep it in sync with socket CORS origin.
+    corsOrigin: config.socketCorsOrigin,
+    mongoUri: config.mongodbUri,
+    jwtSecret: config.jwtAccessSecret,
+    jwtExpiresIn: config.jwtAccessExpiresIn,
+    cloudinary: {
+        cloudName: config.cloudinaryCloudName,
+        apiKey: config.cloudinaryApiKey,
+        apiSecret: config.cloudinaryApiSecret,
+        folder: process.env.CLOUDINARY_FOLDER || 'eqosy-taxi',
+    },
+    firebase: {
+        databaseURL: config.firebaseDatabaseUrl,
+        serviceAccountPath: config.firebaseServiceAccountPath,
+        serviceAccountJson: config.firebaseServiceAccount,
+    },
+    sms: {
+        useDefaultOtp: config.useDefaultOtp ? 'true' : 'false',
+        otpExpiryMinutes: config.otpExpiryMinutes,
+        staticOtpPhone: process.env.STATIC_OTP_PHONE,
+        staticOtpCode: process.env.STATIC_OTP_CODE,
+        indiaHub: {
+            username: config.smsIndiaHubUsername,
+            password: process.env.SMS_INDIA_HUB_PASSWORD,
+            apiKey: config.smsApiKey,
+            senderId: config.smsSenderId,
+            dltTemplateId: config.smsDltTemplateId,
+        }
+    },
+    driverWallet: {
+        defaultCashLimit: Number(process.env.DRIVER_WALLET_DEFAULT_CASH_LIMIT || 500),
+        commissionPercent: Number(process.env.DRIVER_COMMISSION_PERCENT || 20),
+    }
 };

@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useMemo } from "react"
-import { Link, useLocation } from "react-router-dom"
+import { useState, useEffect, useMemo } from "react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import {
   Search,
   FileText,
@@ -104,6 +104,7 @@ const iconMap = {
 
 export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
   const [badges, setBadges] = useState({})
 
@@ -699,6 +700,48 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
             </div>
           )}
 
+          {/* Module Switcher Tabs */}
+          {!isCollapsed && (
+            <div className="flex p-1 bg-neutral-800/40 backdrop-blur-sm rounded-xl mb-4 border border-white/5 shadow-inner animate-[slideIn_0.4s_ease-out_0.15s_both]">
+              <button
+                onClick={() => navigate("/admin/food")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all duration-300",
+                  location.pathname.includes("/admin/food") || location.pathname === "/admin" || location.pathname === "/admin/"
+                    ? "bg-white text-black shadow-[0_4px_12px_rgba(255,255,255,0.15)] scale-[1.02]"
+                    : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
+                )}
+              >
+                <UtensilsCrossed
+                  className={cn(
+                    "w-3.5 h-3.5",
+                    location.pathname.includes("/admin/food") || location.pathname === "/admin" || location.pathname === "/admin/"
+                      ? "text-black"
+                      : "text-neutral-500"
+                  )}
+                />
+                Food
+              </button>
+              <button
+                onClick={() => navigate("/taxi/admin/dashboard")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all duration-300",
+                  location.pathname.startsWith("/taxi")
+                    ? "bg-white text-black shadow-[0_4px_12px_rgba(255,255,255,0.15)] scale-[1.02]"
+                    : "text-neutral-400 hover:text-neutral-200 hover:bg-white/5"
+                )}
+              >
+                <Truck
+                  className={cn(
+                    "w-3.5 h-3.5",
+                    location.pathname.startsWith("/taxi") ? "text-black" : "text-neutral-500"
+                  )}
+                />
+                Taxi
+              </button>
+            </div>
+          )}
+
           {/* Search Bar */}
           {!isCollapsed && (
             <div className="relative animate-[slideIn_0.4s_ease-out_0.2s_both]">
@@ -771,5 +814,3 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     </>
   )
 }
-
-

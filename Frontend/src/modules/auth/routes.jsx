@@ -4,14 +4,14 @@ import Loader from "@food/components/Loader"
 
 const Login = lazy(() => import("./pages/Login"))
 
-
 export default function AuthRoutes() {
   return (
     <Suspense fallback={<Loader />}>
       <Routes>
-        <Route path="login" element={<Login />} />
-        
-        <Route path="*" element={<Navigate to="/user/auth/login" replace />} />
+        <Route index element={<Login viewType="auth" />} />
+        <Route path="login" element={<Login viewType="auth" />} />
+        <Route path="services" element={<Login viewType="selector" />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
   )

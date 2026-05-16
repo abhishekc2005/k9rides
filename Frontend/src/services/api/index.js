@@ -83,6 +83,9 @@ const getUserMeOnce = () => {
 
 /** Auth API - user OTP + admin login via new backend */
 export const authAPI = {
+  sendUnifiedOTP: (phone) => authService.requestUnifiedOtp(phone),
+  verifyUnifiedOTP: (phone, otp, ref, name, fcmToken, platform) => authService.verifyUnifiedOtp(phone, otp, ref, name, fcmToken, platform),
+
   sendOTP: (phone, _purpose = "login", _email = null) => {
     if (!phone) return Promise.reject(new Error("Phone is required"));
     return authService.requestUserOtp(phone);
