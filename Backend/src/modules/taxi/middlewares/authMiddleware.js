@@ -80,12 +80,17 @@ export const authenticate = (allowedRoles = [], options = {}) => async (req, _re
     }
 
     const Model = roleModelMap[payload.role] || roleModelMap[normalizedRole];
+    const subjectId = payload.sub || payload.userId || payload.id || null;
 
     if (!Model) {
       throw new ApiError(401, 'Unsupported auth role');
     }
 
-    const entity = await Model.findById(payload.sub);
+    if (!subjectId) {
+      throw new ApiError(401, 'Authorization token is invalid');
+    }
+
+    const entity = await Model.findById(subjectId);
 
     if (!entity) {
       throw new ApiError(401, 'Authenticated account no longer exists');
@@ -139,7 +144,7 @@ export const authenticate = (allowedRoles = [], options = {}) => async (req, _re
       throw new ApiError(403, 'Service center staff account is inactive');
     }
 
-    attachResolvedAuth(req, payload);
+    attachResolvedAuth(req, { ...payload, sub: String(subjectId) });
     req.auth.entity = entity;
 
     if (normalizedRole === 'admin') {

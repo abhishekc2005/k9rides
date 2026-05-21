@@ -21,7 +21,7 @@ const getOwnerMobile = (owner) =>
 
 const DeletedOwners = () => {
   const navigate = useNavigate();
-  const token = localStorage.getItem("adminToken") || "";
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken')) || "";
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -283,3 +283,4 @@ const DeletedOwners = () => {
 };
 
 export default DeletedOwners;
+

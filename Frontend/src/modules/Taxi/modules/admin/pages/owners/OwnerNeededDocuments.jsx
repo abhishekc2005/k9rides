@@ -16,7 +16,7 @@ const getDocTypeLabel = (value) => {
 
 const OwnerNeededDocuments = () => {
   const navigate = useNavigate();
-  const token = localStorage.getItem('adminToken') || '';
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken')) || '';
 
   const [isLoading, setIsLoading] = useState(true);
   const [documents, setDocuments] = useState([]);
@@ -218,3 +218,4 @@ const OwnerNeededDocuments = () => {
 };
 
 export default OwnerNeededDocuments;
+

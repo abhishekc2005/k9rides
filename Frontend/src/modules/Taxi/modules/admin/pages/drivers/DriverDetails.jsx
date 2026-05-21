@@ -248,7 +248,7 @@ const DriverDetails = () => {
     setError('');
     setAvatarFailed(false);
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken'));
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const [res, walletRes] = await Promise.all([
         fetch(
@@ -642,15 +642,15 @@ const DriverDetails = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="border border-gray-100 rounded-lg p-4">
                     <p className="text-sm text-gray-500">Total Credited</p>
-                    <p className="text-2xl font-semibold text-gray-900">₹ {wallet.total_credits || 0}</p>
+                    <p className="text-2xl font-semibold text-gray-900">? {wallet.total_credits || 0}</p>
                   </div>
                   <div className="border border-gray-100 rounded-lg p-4">
                     <p className="text-sm text-gray-500">Total Debited</p>
-                    <p className="text-2xl font-semibold text-gray-900">₹ {wallet.total_debits || 0}</p>
+                    <p className="text-2xl font-semibold text-gray-900">? {wallet.total_debits || 0}</p>
                   </div>
                   <div className="border border-gray-100 rounded-lg p-4">
                     <p className="text-sm text-gray-500">Available Balance</p>
-                    <p className="text-2xl font-semibold text-gray-900">₹ {wallet.balance || 0}</p>
+                    <p className="text-2xl font-semibold text-gray-900">? {wallet.balance || 0}</p>
                   </div>
                 </div>
               </div>
@@ -688,7 +688,7 @@ const DriverDetails = () => {
                     onClick={async () => {
                       setWalletForm((prev) => ({ ...prev, isSubmitting: true }));
                       try {
-                        const token = localStorage.getItem('adminToken');
+                        const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken'));
                         await fetch(
                           `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/wallet/drivers/${id}/adjust`,
                           {
@@ -741,7 +741,7 @@ const DriverDetails = () => {
                             <td className="px-6 py-3">{item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : 'N/A'}</td>
                             <td className="px-4 py-3 capitalize">{String(item.type || '').replace(/_/g, ' ') || 'N/A'}</td>
                             <td className={`px-4 py-3 font-semibold ${Number(item.amount || 0) < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                              ₹ {Math.abs(Number(item.amount || 0))}
+                              ? {Math.abs(Number(item.amount || 0))}
                             </td>
                             <td className="px-4 py-3">{item.description || '-'}</td>
                           </tr>
@@ -779,7 +779,7 @@ const DriverDetails = () => {
                           <td className="px-6 py-3">{item.date ? new Date(item.date).toLocaleString('en-IN') : 'N/A'}</td>
                           <td className="px-4 py-3">{item.name}</td>
                           <td className="px-4 py-3">{item.mobile}</td>
-                          <td className="px-4 py-3">₹ {item.requested_amount}</td>
+                          <td className="px-4 py-3">? {item.requested_amount}</td>
                           <td className="px-4 py-3 capitalize">{item.status}</td>
                           <td className="px-4 py-3">-</td>
                         </tr>
@@ -920,7 +920,7 @@ const DriverDetails = () => {
 
                                   try {
                                     setDocumentActionKey(`${doc.sourceKey}:approve`);
-                                    const token = localStorage.getItem('adminToken');
+                                    const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken'));
                                     const nextDocuments = {
                                       ...(profile?.documents || {}),
                                       [doc.sourceKey]: {
@@ -989,7 +989,7 @@ const DriverDetails = () => {
 
                                   try {
                                     setDocumentActionKey(`${doc.sourceKey}:reject`);
-                                    const token = localStorage.getItem('adminToken');
+                                    const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken'));
                                     const nextDocuments = {
                                       ...(profile?.documents || {}),
                                       [doc.sourceKey]: {
@@ -1163,27 +1163,27 @@ const DriverDetails = () => {
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                 <div className="border border-gray-100 rounded-lg p-3">
                   <p className="text-xs text-gray-500">Today Earnings</p>
-                  <p className="text-lg font-semibold">₹ {earnings.today_earnings || 0}</p>
+                  <p className="text-lg font-semibold">? {earnings.today_earnings || 0}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg p-3">
                   <p className="text-xs text-gray-500">Admin Commission</p>
-                  <p className="text-lg font-semibold">₹ {earnings.admin_commission || 0}</p>
+                  <p className="text-lg font-semibold">? {earnings.admin_commission || 0}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg p-3">
                   <p className="text-xs text-gray-500">Drivers Earnings</p>
-                  <p className="text-lg font-semibold">₹ {earnings.driver_earnings || 0}</p>
+                  <p className="text-lg font-semibold">? {earnings.driver_earnings || 0}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg p-3">
                   <p className="text-xs text-gray-500">By Cash</p>
-                  <p className="text-lg font-semibold">₹ {earnings.by_cash || 0}</p>
+                  <p className="text-lg font-semibold">? {earnings.by_cash || 0}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg p-3">
                   <p className="text-xs text-gray-500">By Wallet</p>
-                  <p className="text-lg font-semibold">₹ {earnings.by_wallet || 0}</p>
+                  <p className="text-lg font-semibold">? {earnings.by_wallet || 0}</p>
                 </div>
                 <div className="border border-gray-100 rounded-lg p-3">
                   <p className="text-xs text-gray-500">By Card/Online</p>
-                  <p className="text-lg font-semibold">₹ {earnings.by_card || 0}</p>
+                  <p className="text-lg font-semibold">? {earnings.by_card || 0}</p>
                 </div>
               </div>
             </div>
@@ -1271,6 +1271,7 @@ export default DriverDetails;
       ))}
     </svg>
   );
+
 
 
 

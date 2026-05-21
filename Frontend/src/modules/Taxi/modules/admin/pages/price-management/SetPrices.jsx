@@ -177,7 +177,7 @@ const SetPrices = ({ mode }) => {
   const [formData, setFormData] = useState(initialFormState);
 
   const baseUrl = `${API_BASE_URL}/admin`;
-  const token = localStorage.getItem('adminToken');
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken'));
 
   useEffect(() => {
     fetchInitialData();
@@ -482,7 +482,7 @@ const SetPrices = ({ mode }) => {
                                             : 'border-slate-300 bg-white text-transparent'
                                         }`}
                                       >
-                                        ✓
+                                        ?
                                       </div>
                                       <div>
                                         <p className="text-[13px] font-bold text-slate-800">{option.label}</p>
@@ -724,3 +724,4 @@ const SetPrices = ({ mode }) => {
 };
 
 export default SetPrices;
+

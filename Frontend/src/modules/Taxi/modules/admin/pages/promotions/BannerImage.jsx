@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { getUnifiedAdminToken } from '../../services/adminSession';
 
 const Motion = motion;
 const LIST_PATH = '/admin/promotions/banner-image';
@@ -34,7 +35,7 @@ const BannerImage = () => {
   const [formData, setFormData] = useState(createInitialFormData);
   const [imagePreview, setImagePreview] = useState(null);
 
-  const token = localStorage.getItem('adminToken') || '';
+  const token = getUnifiedAdminToken() || '';
   const baseUrl = globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin';
 
   const resolveImageUrl = useCallback(
@@ -452,3 +453,4 @@ const BannerImage = () => {
 };
 
 export default BannerImage;
+

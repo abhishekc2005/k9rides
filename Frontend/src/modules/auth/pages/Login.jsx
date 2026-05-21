@@ -8,6 +8,8 @@ import { setUnifiedAuthData, isUnifiedAuthenticated } from "@food/utils/auth"
 
 export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
   const RESEND_COOLDOWN_SECONDS = 60
+  const VERIFY_REQUEST_TIMEOUT_MS = 20000
+  const FCM_FETCH_TIMEOUT_MS = 12000
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
   const [step, setStep] = useState(1) // 1: Phone, 2: OTP
@@ -164,6 +166,20 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
     return digits.length >= 8 ? digits : ""
   }
 
+  const withTimeout = async (promise, timeoutMs, label) => {
+    let timeoutId
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`${label} timed out. Please try again.`))
+      }, timeoutMs)
+    })
+    try {
+      return await Promise.race([promise, timeoutPromise])
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
+
   const handleSendOTP = async (e) => {
     e.preventDefault()
     const phone = normalizedPhone()
@@ -255,7 +271,11 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
           throw new Error("Unable to fetch mobile FCM token from app bridge")
         }
       } else {
-        fcmToken = await getWebFcmTokenForLogin()
+        fcmToken = await withTimeout(
+          getWebFcmTokenForLogin(),
+          FCM_FETCH_TIMEOUT_MS,
+          "FCM token fetch",
+        )
       }
 
       console.log("[Auth] FCM token for login:", {
@@ -264,7 +284,11 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
         preview: `${fcmToken.slice(0, 12)}...`,
       })
 
-      const response = await authAPI.verifyUnifiedOTP(phoneNumber, otpDigits, null, null, fcmToken, platform)
+      const response = await withTimeout(
+        authAPI.verifyUnifiedOTP(phoneNumber, otpDigits, null, null, fcmToken, platform),
+        VERIFY_REQUEST_TIMEOUT_MS,
+        "OTP verification request",
+      )
       console.log("[Auth] OTP verify response:", response?.data || response)
       const data = response?.data?.data || response?.data || {}
 
@@ -273,6 +297,11 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
       }
 
       setUnifiedAuthData(data)
+      try {
+        await authAPI.saveLoginFcmToken(fcmToken, platform)
+      } catch (fcmSaveError) {
+        console.warn("[Auth] FCM save route failed after login:", fcmSaveError?.message || fcmSaveError)
+      }
       toast.success("Authentication successful!")
       navigate("/login/services")
     } catch (err) {

@@ -151,7 +151,6 @@ import {
   getVehicleTypes,
   getWithdrawals,
   getZones,
-  loginAdmin,
   resetPassword,
   verifyResetOtp,
   toggleChannelMail,
@@ -223,7 +222,6 @@ export const adminRouter = Router();
 
 adminRouter.get('/admin', getAdminStatus);
 adminRouter.get('/admin/status', getAdminStatus);
-adminRouter.post('/admin/login', loginAdmin);
 adminRouter.post('/admin/forgot-password', forgotPassword);
 adminRouter.post('/admin/verify-reset-otp', verifyResetOtp);
 adminRouter.post('/admin/reset-password', resetPassword);

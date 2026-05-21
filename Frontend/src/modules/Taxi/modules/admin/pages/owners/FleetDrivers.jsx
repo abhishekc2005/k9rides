@@ -57,7 +57,7 @@ const FleetDrivers = () => {
       setIsLoading(true);
 
       try {
-        const token = localStorage.getItem('adminToken') || '';
+        const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken')) || '';
         const response = await fetch(`${BASE}/drivers?page=1&limit=100`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -269,3 +269,4 @@ const FleetDrivers = () => {
 };
 
 export default FleetDrivers;
+

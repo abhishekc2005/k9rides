@@ -9,6 +9,7 @@ import {
   Loader2,
   ArrowLeft,
 } from 'lucide-react';
+import { getUnifiedAdminToken } from '../../services/adminSession';
 
 const BASE = () => `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/payment-methods`;
 
@@ -41,7 +42,7 @@ const PaymentMethods = () => {
   const fetchMethods = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = getUnifiedAdminToken();
       const res = await fetch(BASE(), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -117,7 +118,7 @@ const PaymentMethods = () => {
     if (!formData.methodName.trim()) return;
     setSaving(true);
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = getUnifiedAdminToken();
       const payload = {
         method_name: formData.methodName.trim(),
         fields: formData.fields
@@ -154,7 +155,7 @@ const PaymentMethods = () => {
 
   const handleToggleStatus = async (method) => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = getUnifiedAdminToken();
       await fetch(`${BASE()}/${method._id}`, {
         method: 'PATCH',
         headers: {
@@ -171,7 +172,7 @@ const PaymentMethods = () => {
 
   const handleDelete = async (methodId) => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = getUnifiedAdminToken();
       await fetch(`${BASE()}/${methodId}`, {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -442,3 +443,4 @@ const PaymentMethods = () => {
 };
 
 export default PaymentMethods;
+

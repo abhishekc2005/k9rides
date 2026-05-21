@@ -1,10 +1,23 @@
 import api from '../../../shared/api/axiosInstance';
+import { BACKEND_ORIGIN } from '../../../shared/api/runtimeConfig';
+
+const unwrap = (response) => response?.data?.data || response?.data || response;
 
 export const adminService = {
   /**
    * Admin Authentication
    */
-  login: (credentials) => api.post('/admin/login', credentials),
+  login: async (credentials) => {
+    const response = await api.post(`${BACKEND_ORIGIN}/api/v1/food/auth/admin/login`, credentials);
+    const payload = unwrap(response);
+    return {
+      data: {
+        token: payload?.accessToken || '',
+        admin: payload?.user || null,
+        refreshToken: payload?.refreshToken || null,
+      },
+    };
+  },
   forgotPassword: (email) => api.post('/admin/forgot-password', { email }),
   verifyResetOtp: (data) => api.post('/admin/verify-reset-otp', data),
   resetPassword: (data) => api.post('/admin/reset-password', data),

@@ -115,10 +115,10 @@ const ManageFleet = () => {
     car_color: ''
   });
 
-  const token = localStorage.getItem('adminToken') || '';
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken')) || '';
   const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  /* ── Fetch initial data ── */
+  /* -- Fetch initial data -- */
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -166,7 +166,7 @@ const ManageFleet = () => {
     }
   };
 
-  /* ── Fetch vehicle types based on Area ── */
+  /* -- Fetch vehicle types based on Area -- */
   const fetchVehicleTypes = async () => {
     try {
       const typeFilter = (formData.transport_type || 'taxi').toLowerCase();
@@ -372,7 +372,7 @@ const ManageFleet = () => {
     });
   };
 
-  /* ── Status badge ── */
+  /* -- Status badge -- */
   const StatusBadge = ({ status }) => {
     const map = {
       approved: { color: 'bg-emerald-50 text-emerald-700 border-emerald-100', icon: <CheckCircle size={12} />, label: 'Approved' },
@@ -387,9 +387,9 @@ const ManageFleet = () => {
     );
   };
 
-  /* ════════════════════════════════════
+  /* ------------------------------------
        CREATE / EDIT FORM
-  ════════════════════════════════════ */
+  ------------------------------------ */
   if (view === 'create' || view === 'edit') {
     return (
       <div className="min-h-screen p-1 font-sans">
@@ -607,9 +607,9 @@ const ManageFleet = () => {
     );
   }
 
-  /* ════════════════════════════════════
+  /* ------------------------------------
        LIST VIEW
-  ════════════════════════════════════ */
+  ------------------------------------ */
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-950">
       <AnimatePresence mode="wait">
@@ -734,25 +734,25 @@ const ManageFleet = () => {
                         {/* Vehicle Type */}
                         <td className="px-3 py-5 text-sm text-gray-950">
                           <span className="text-[13px] font-black text-gray-800 uppercase">
-                            {item.vehicle_type_id?.name || item.vehicle_type_id?.type_name || item.vehicle_type || '—'}
+                            {item.vehicle_type_id?.name || item.vehicle_type_id?.type_name || item.vehicle_type || '�'}
                           </span>
                         </td>
 
                         {/* Fleet Owner */}
                         <td className="hidden">
                           <span className="text-[12px] font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 uppercase tracking-wider shadow-sm shadow-indigo-50">
-                            {item.owner_id?.company_name || item.owner_id?.name || '—'}
+                            {item.owner_id?.company_name || item.owner_id?.name || '�'}
                           </span>
                         </td>
 
                         {/* Car Brand */}
                         <td className="px-3 py-5 text-sm text-gray-950">
-                          <span className="text-[13px] font-bold text-gray-600">{item.car_brand || '—'}</span>
+                          <span className="text-[13px] font-bold text-gray-600">{item.car_brand || '�'}</span>
                         </td>
 
                         {/* Car Model */}
                         <td className="px-3 py-5">
-                          <span className="text-[13px] font-bold text-gray-600">{item.car_model || '—'}</span>
+                          <span className="text-[13px] font-bold text-gray-600">{item.car_model || '�'}</span>
                         </td>
 
                         {/* Document View */}
@@ -779,7 +779,7 @@ const ManageFleet = () => {
                         {/* License Plate */}
                         <td className="px-3 py-5">
                           <span className="inline-block px-3 py-1 bg-gray-50 border border-gray-100 rounded-lg text-[12px] font-black text-gray-700 tracking-widest uppercase">
-                            {item.license_plate_number || '—'}
+                            {item.license_plate_number || '�'}
                           </span>
                         </td>
 
@@ -791,7 +791,7 @@ const ManageFleet = () => {
                         {/* Reason */}
                         <td className="px-3 py-5">
                           <span className="text-[12px] text-gray-400 italic">
-                            {item.status?.toLowerCase() === 'rejected' ? (getFleetStatusReason(item) || 'Rejected without a reason') : '—'}
+                            {item.status?.toLowerCase() === 'rejected' ? (getFleetStatusReason(item) || 'Rejected without a reason') : '�'}
                           </span>
                         </td>
 
@@ -891,4 +891,5 @@ const ManageFleet = () => {
 };
 
 export default ManageFleet;
+
 

@@ -80,8 +80,8 @@ const userSchema = new mongoose.Schema(
     },
     name: {
       type: String,
-      required: true,
       trim: true,
+      default: '',
     },
     email: {
       type: String,
@@ -99,15 +99,13 @@ const userSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
-    fcmTokenWeb: {
-      type: String,
-      default: '',
-      trim: true,
+    fcmTokens: {
+      type: [String],
+      default: [],
     },
     fcmTokenMobile: {
-      type: String,
-      default: '',
-      trim: true,
+      type: [String],
+      default: [],
     },
     dateOfBirth: {
       type: Date,
@@ -216,6 +214,7 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
+    collection: 'users',
     timestamps: true,
   },
 );

@@ -4,6 +4,7 @@ import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, AlertCircle, KeyRound, Ch
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService } from '../../services/adminService';
 import { useSettings } from '../../../../shared/context/SettingsContext';
+import { setUnifiedAdminSession } from '../../services/adminSession';
 
 const AdminLogin = () => {
   const { settings } = useSettings();
@@ -35,8 +36,11 @@ const AdminLogin = () => {
 
     try {
       const response = await adminService.login({ email, password });
-      localStorage.setItem('adminToken', response?.data?.token || '');
-      localStorage.setItem('adminInfo', JSON.stringify(response?.data?.admin || {}));
+      setUnifiedAdminSession({
+        token: response?.data?.token || '',
+        user: response?.data?.admin || {},
+        refreshToken: response?.data?.refreshToken || null,
+      });
       setTimeout(() => navigate('/taxi/admin/dashboard'), 300);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Unable to complete admin login.');

@@ -185,7 +185,7 @@ const PromoCodes = () => {
   const [filters, setFilters] = useState(createInitialFilters);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const token = localStorage.getItem('adminToken') || '';
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken')) || '';
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -843,3 +843,4 @@ const PromoCodes = () => {
 };
 
 export default PromoCodes;
+

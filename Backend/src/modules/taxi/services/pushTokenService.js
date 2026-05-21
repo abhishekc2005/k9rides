@@ -32,15 +32,17 @@ export const normalizePushToken = (token) => {
 };
 
 export const getPushTokenField = (platform) =>
-  normalizePushPlatform(platform) === 'web' ? 'fcmTokenWeb' : 'fcmTokenMobile';
+  normalizePushPlatform(platform) === 'web' ? 'fcmTokens' : 'fcmTokenMobile';
 
 export const assignPushTokenToEntity = (entity, { token, platform }) => {
   const normalizedToken = normalizePushToken(token);
   const normalizedPlatform = normalizePushPlatform(platform);
   const fieldName = getPushTokenField(normalizedPlatform);
-
-  entity[fieldName] = normalizedToken;
-  entity.set?.('fcmTokens', undefined, { strict: false });
+  const nextTokens = new Set([
+    ...toTokenArray(entity[fieldName]),
+    normalizedToken,
+  ]);
+  entity[fieldName] = Array.from(nextTokens);
 
   return {
     token: normalizedToken,
@@ -49,8 +51,24 @@ export const assignPushTokenToEntity = (entity, { token, platform }) => {
   };
 };
 
+const toTokenArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map((item) => String(item || '').trim()).filter(Boolean);
+  return [String(value || '').trim()].filter(Boolean);
+};
+
 export const listEntityPushTokens = (entity = {}, role = 'unknown') =>
   [
-    { role, field: 'fcmTokenWeb', platform: 'web', token: String(entity.fcmTokenWeb || '').trim() },
-    { role, field: 'fcmTokenMobile', platform: 'mobile', token: String(entity.fcmTokenMobile || '').trim() },
-  ].filter((entry) => entry.token);
+    ...toTokenArray(entity.fcmTokens).map((token) => ({
+      role,
+      field: 'fcmTokens',
+      platform: 'web',
+      token,
+    })),
+    ...toTokenArray(entity.fcmTokenMobile).map((token) => ({
+      role,
+      field: 'fcmTokenMobile',
+      platform: 'mobile',
+      token,
+    })),
+  ];

@@ -40,7 +40,7 @@ const UserDetails = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const token = localStorage.getItem('adminToken');
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken'));
 
   const fetchData = async () => {
     try {
@@ -408,7 +408,7 @@ const UserDetails = () => {
                   </div>
                   <div className="relative z-10 flex flex-col justify-center h-full">
                     <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">{s.label}</p>
-                    <p className="text-3xl font-black text-gray-900 tracking-tighter">₹ {s.val.toFixed(2)}</p>
+                    <p className="text-3xl font-black text-gray-900 tracking-tighter">? {s.val.toFixed(2)}</p>
                   </div>
                 </div>
               ))}
@@ -447,7 +447,7 @@ const UserDetails = () => {
                         </div>
                       </div>
                       <p className={`text-[15px] font-black tracking-tight ${tr.type === 'credit' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {tr.type === 'credit' ? '+' : '-'} ₹{parseFloat(tr.amount).toFixed(2)}
+                        {tr.type === 'credit' ? '+' : '-'} ?{parseFloat(tr.amount).toFixed(2)}
                       </p>
                     </div>
                   ))
@@ -540,14 +540,14 @@ const UserDetails = () => {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-[15px] font-black text-gray-900">{item.name}</p>
-                      <p className="mt-1 text-[12px] font-bold text-gray-400">{item.vehicle_type?.name || 'Vehicle plan'} • {item.transport_type}</p>
+                      <p className="mt-1 text-[12px] font-bold text-gray-400">{item.vehicle_type?.name || 'Vehicle plan'} � {item.transport_type}</p>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${item.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                       {item.status}
                     </span>
                   </div>
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3 text-[12px] font-bold text-gray-500">
-                    <div>Price: <span className="text-gray-900">₹{Number(item.amount || 0).toFixed(2)}</span></div>
+                    <div>Price: <span className="text-gray-900">?{Number(item.amount || 0).toFixed(2)}</span></div>
                     <div>Benefit: <span className="text-gray-900">{item.benefit_type === 'unlimited' ? 'Unlimited rides' : `${item.ride_limit} rides`}</span></div>
                     <div>Used: <span className="text-gray-900">{item.rides_used}</span></div>
                     <div>Remaining: <span className="text-gray-900">{item.rides_remaining === null ? 'Unlimited' : item.rides_remaining}</span></div>
@@ -583,7 +583,7 @@ const UserDetails = () => {
                 <div>
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block px-1">Amount to {walletType}</label>
                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black text-gray-300 pointer-events-none">₹</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-black text-gray-300 pointer-events-none">?</span>
                       <input 
                         type="number" 
                         value={walletAmount}
@@ -621,8 +621,9 @@ const UserDetails = () => {
   );
 };
 
-const IndianRupeeIcon = ({ size, className }) => <span className={className} style={{fontSize: size}}>₹</span>;
+const IndianRupeeIcon = ({ size, className }) => <span className={className} style={{fontSize: size}}>?</span>;
 const WalletIcon = ({ size, className }) => <CreditCard size={size} className={className} />;
 
 export default UserDetails;
+
 

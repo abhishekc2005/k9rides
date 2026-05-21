@@ -32,7 +32,7 @@ const DEFAULT_CREDENTIALS = {
     process.env.DEFAULT_ADMIN_PASSWORD || "sahin.eqosy@2004#",
   ),
   userPhone: String(process.env.DEFAULT_USER_PHONE || "7974161582"),
-  restaurantPhone: String(process.env.DEFAULT_RESTAURANT_PHONE || "9009925021"),
+  restaurantPhone: String(process.env.DEFAULT_RESTAURANT_PHONE || "7974161582"),
   deliveryPhone: String(process.env.DEFAULT_DELIVERY_PHONE || "7610416911"),
 };
 
@@ -126,14 +126,16 @@ export const verifyUserOtpAndLogin = async (
   // Update FCM token in background so login is not blocked on this write.
   if (fcmToken) {
     const tokenField = platform === "mobile" ? "fcmTokenMobile" : "fcmTokens";
-    void FoodUser.updateOne(
-      { _id: userDoc._id },
-      { $addToSet: { [tokenField]: fcmToken } },
-    ).catch((err) => {
+    try {
+      await FoodUser.updateOne(
+        { _id: userDoc._id },
+        { $addToSet: { [tokenField]: String(fcmToken).trim() } },
+      );
+    } catch (err) {
       logger.warn(
         `[Auth Verify] FCM token update failed for user ${userDoc._id}: ${err.message}`,
       );
-    });
+    }
   }
 
   // Ensure referralCode exists (used for share links on older accounts).

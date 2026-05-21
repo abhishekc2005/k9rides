@@ -1069,7 +1069,7 @@ function TaxiApp() {
               </Route>
 
               {/* Admin Module Routes */}
-              <Route path="admin/login" element={<AdminLogin />} />
+              <Route path="admin/login" element={<Navigate to="/admin/login" replace />} />
               <Route path="user-import/create" element={<AdminLayout />}>
                 <Route index element={<AdminUserImportCreate />} />
               </Route>

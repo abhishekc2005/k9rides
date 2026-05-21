@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from './runtimeConfig';
+import { syncAdminSessionBridge } from '../../modules/admin/services/adminSession';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -80,6 +81,7 @@ const getStoredTokenByRole = (role) => {
           getSessionItem('token'),
         ]
       : [
+          normalizedRole === 'admin' ? localStorage.getItem('admin_accessToken') : null,
           localStorage.getItem(`${role}Token`),
           localStorage.getItem('token'),
         ]
@@ -154,6 +156,11 @@ const clearStaleAuthState = (role = '', staleToken = '') => {
   }
 
   if (!normalizedRole || normalizedRole === 'admin') {
+    if (!staleToken || localStorage.getItem('admin_accessToken') === staleToken) {
+      localStorage.removeItem('admin_accessToken');
+    }
+    localStorage.removeItem('admin_refreshToken');
+    localStorage.removeItem('admin_user');
     if (!staleToken || localStorage.getItem('adminToken') === staleToken) {
       localStorage.removeItem('adminToken');
     }
@@ -176,6 +183,7 @@ const isAuthTokenFailure = (message = '') => {
 // Request Interceptor: Attach Auth Token automatically
 api.interceptors.request.use(
   (config) => {
+    syncAdminSessionBridge();
     const requestPath = String(config.url || '').split('?')[0];
     const existingAuthorization = config.headers?.Authorization || config.headers?.authorization;
 

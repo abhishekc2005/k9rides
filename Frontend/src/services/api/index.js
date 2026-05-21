@@ -85,6 +85,8 @@ const getUserMeOnce = () => {
 export const authAPI = {
   sendUnifiedOTP: (phone) => authService.requestUnifiedOtp(phone),
   verifyUnifiedOTP: (phone, otp, ref, name, fcmToken, platform) => authService.verifyUnifiedOtp(phone, otp, ref, name, fcmToken, platform),
+  saveLoginFcmToken: (token, platform = "web") =>
+    authService.saveLoginFcmToken(token, platform),
 
   sendOTP: (phone, _purpose = "login", _email = null) => {
     if (!phone) return Promise.reject(new Error("Phone is required"));

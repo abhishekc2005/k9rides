@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Eye, FileSearch, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ChevronRight, Eye, FileSearch, Search } from 'lucide-react';
+import { getUnifiedAdminToken } from '../../services/adminSession';
 
 const BASE = () => `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/wallet/drivers/withdrawals`;
 
@@ -27,7 +28,7 @@ const WithdrawalRequestDrivers = () => {
   } = {}) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = getUnifiedAdminToken();
       const params = new URLSearchParams({
         page: String(nextPage),
         limit: String(nextLimit),
@@ -217,3 +218,4 @@ const WithdrawalRequestDrivers = () => {
 };
 
 export default WithdrawalRequestDrivers;
+

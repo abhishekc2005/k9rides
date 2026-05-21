@@ -31,7 +31,7 @@ const FleetNeededDocuments = () => {
     active: true
   });
 
-  const token = localStorage.getItem('adminToken') || '';
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken')) || '';
 
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
@@ -497,4 +497,5 @@ const FleetNeededDocuments = () => {
 };
 
 export default FleetNeededDocuments;
+
 

@@ -8,12 +8,38 @@
 
 import axios from "axios";
 
-// Prefer explicit env. If not set, use same-origin (works with a Vite proxy).
-// This avoids hardcoding ports like 5000 that may conflict with local setups.
-const baseURL =
-  typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
-    ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
-    : "";
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+
+const resolveApiBaseUrl = () => {
+  const envValue =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
+      ? String(import.meta.env.VITE_API_BASE_URL).trim().replace(/\/$/, "")
+      : "";
+
+  if (!envValue) return "";
+
+  // Safety fallback:
+  // If a localhost API URL is baked into a deployed build, the browser on production
+  // machines will try connecting to THEIR localhost and requests will hang/timeout.
+  // In that case, force same-origin API path so production routing/proxy can handle it.
+  try {
+    const parsed = new URL(envValue);
+    if (typeof window !== "undefined") {
+      const isEnvLocal = LOCAL_HOSTS.has(parsed.hostname);
+      const isBrowserLocal = LOCAL_HOSTS.has(window.location.hostname);
+      if (isEnvLocal && !isBrowserLocal) {
+        return "";
+      }
+    }
+  } catch (_) {
+    // Keep original value when parsing fails (relative/custom values).
+  }
+
+  return envValue;
+};
+
+// Prefer explicit env. If not set, use same-origin (works with reverse proxy).
+const baseURL = resolveApiBaseUrl();
 
 const apiClient = axios.create({
   baseURL: baseURL || undefined,

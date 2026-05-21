@@ -41,7 +41,7 @@ const adminSchema = new mongoose.Schema(
         }
     },
     {
-        collection: 'food_admins',
+        collection: 'admins',
         timestamps: true
     }
 );

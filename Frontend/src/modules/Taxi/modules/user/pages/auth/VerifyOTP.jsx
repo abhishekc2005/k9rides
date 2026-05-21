@@ -14,6 +14,23 @@ const syncPushTokens = () => {
   window.__flushNativeFcmToken?.().catch?.(() => {});
   window.__registerBrowserFcmToken?.({ interactive: true }).catch?.(() => {});
 };
+const getCachedLoginPushToken = () => {
+  try {
+    const native = JSON.parse(localStorage.getItem('lastNativeFcmRegistration') || 'null');
+    if (native?.token) {
+      return { token: String(native.token), platform: String(native.platform || 'mobile') };
+    }
+  } catch {}
+
+  try {
+    const browser = JSON.parse(localStorage.getItem('lastBrowserFcmRegistration') || 'null');
+    if (browser?.token) {
+      return { token: String(browser.token), platform: 'web' };
+    }
+  } catch {}
+
+  return { token: null, platform: null };
+};
 const maskPhone = (phone) => {
   const digits = String(phone || '').replace(/\D/g, '').slice(-10);
   if (digits.length !== 10) {
@@ -121,7 +138,8 @@ const VerifyOTP = () => {
     setErrorMessage('');
 
     try {
-      const response = await userAuthService.verifyOtp(phone, fullOtp);
+      const { token: pushToken, platform } = getCachedLoginPushToken();
+      const response = await userAuthService.verifyOtp(phone, fullOtp, pushToken, platform);
       const payload = unwrap(response);
 
       setSuccess(true);

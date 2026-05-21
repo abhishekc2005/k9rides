@@ -18,7 +18,7 @@ const NegativeBalanceDrivers = () => {
   const fetchRows = async ({ nextPage = page, nextLimit = itemsPerPage, nextSearch = searchTerm } = {}) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken'));
       const params = new URLSearchParams({
         page: String(nextPage),
         limit: String(nextLimit),
@@ -83,7 +83,7 @@ const NegativeBalanceDrivers = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-xl font-semibold text-gray-900">Negative Balance Drivers</h1>
           <div className="text-sm text-gray-500">
-            Total Outstanding: <span className="font-semibold text-rose-600">₹ {Number(summary.total_outstanding || 0).toFixed(2)}</span>
+            Total Outstanding: <span className="font-semibold text-rose-600">? {Number(summary.total_outstanding || 0).toFixed(2)}</span>
           </div>
         </div>
       </div>
@@ -235,3 +235,4 @@ const NegativeBalanceDrivers = () => {
 };
 
 export default NegativeBalanceDrivers;
+

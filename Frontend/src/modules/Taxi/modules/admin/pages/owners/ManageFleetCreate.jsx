@@ -16,7 +16,7 @@ const getVehicleTypeLabel = (vt) => vt?.name || vt?.type_name || vt?.title || vt
 
 const ManageFleetCreate = () => {
   const navigate = useNavigate();
-  const token = localStorage.getItem('adminToken') || '';
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken')) || '';
   const authHeaders = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
   const { transportTypes } = useTaxiTransportTypes();
 
@@ -293,3 +293,4 @@ const ManageFleetCreate = () => {
 };
 
 export default ManageFleetCreate;
+

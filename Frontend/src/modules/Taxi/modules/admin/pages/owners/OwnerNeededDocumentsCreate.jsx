@@ -21,7 +21,7 @@ const OwnerNeededDocumentsCreate = () => {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id');
 
-  const token = localStorage.getItem('adminToken') || '';
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken')) || '';
   const [submitting, setSubmitting] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(Boolean(editId));
 
@@ -237,3 +237,4 @@ const OwnerNeededDocumentsCreate = () => {
 };
 
 export default OwnerNeededDocumentsCreate;
+

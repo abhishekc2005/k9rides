@@ -5,6 +5,11 @@ import { useSettings } from '../../../shared/context/SettingsContext';
 import { getSupportConversations, markSupportMessagesRead } from '../../shared/chat/chatApi';
 import { adminService } from '../services/adminService';
 import { hasAdminPermission } from '../constants/adminAccess';
+import {
+  clearUnifiedAdminSession,
+  getUnifiedAdminProfile,
+  syncAdminSessionBridge,
+} from '../services/adminSession';
 import toast from 'react-hot-toast';
 import {
   BarChart3,
@@ -98,7 +103,7 @@ const readAdminProfile = () => {
   }
 
   try {
-    const parsed = JSON.parse(window.localStorage.getItem('adminInfo') || 'null');
+    const parsed = getUnifiedAdminProfile();
     return parsed || { admin_type: 'superadmin', permissions: ['*'], name: 'Admin' };
   } catch {
     return { admin_type: 'superadmin', permissions: ['*'], name: 'Admin' };
@@ -1021,7 +1026,7 @@ const AdminLayout = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
+    const { token } = syncAdminSessionBridge();
 
     if (!token || mode !== ADMIN_MODE) {
       setChatUnreadCount(0);
@@ -1158,9 +1163,9 @@ const AdminLayout = () => {
   }, [isSearchOpen]);
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    if (!token && !window.location.pathname.includes('/taxi/admin/login')) {
-      navigate('/taxi/admin/login');
+    const { token } = syncAdminSessionBridge();
+    if (!token && !window.location.pathname.includes('/admin/login')) {
+      navigate('/admin/login');
       return undefined;
     }
 
@@ -1238,10 +1243,9 @@ const AdminLayout = () => {
 
   const handleLogout = () => {
     socketService.disconnect();
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminInfo');
+    clearUnifiedAdminSession();
     setIsUserMenuOpen(false);
-    navigate('/taxi/admin/login');
+    navigate('/admin/login');
   };
 
   return (

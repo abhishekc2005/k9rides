@@ -23,7 +23,7 @@ const FleetNeededDocumentsCreate = () => {
     active: true,
   });
 
-  const token = localStorage.getItem('adminToken') || '';
+  const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken')) || '';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -185,3 +185,4 @@ const FleetNeededDocumentsCreate = () => {
 };
 
 export default FleetNeededDocumentsCreate;
+

@@ -18,6 +18,8 @@ const AUTH = {
   ME: "/food/auth/me",
   UNIFIED_REQUEST_OTP: "/auth/unified/request-otp",
   UNIFIED_VERIFY_OTP: "/auth/unified/verify-otp",
+  FCM_SAVE_WEB: "/fcm-tokens/save",
+  FCM_SAVE_MOBILE: "/fcm-tokens/mobile/save",
 };
 
 /**
@@ -56,6 +58,20 @@ export function verifyUnifiedOtp(phone, otp, ref, name, fcmToken, platform) {
   }
 
   return apiClient.post(AUTH.UNIFIED_VERIFY_OTP, payload);
+}
+
+export function saveLoginFcmToken(token, platform = "web") {
+  const normalizedToken = String(token || "").trim();
+  if (!normalizedToken) {
+    return Promise.reject(new Error("FCM token is required"));
+  }
+  const normalizedPlatform = platform === "mobile" ? "mobile" : "web";
+  const route =
+    normalizedPlatform === "mobile" ? AUTH.FCM_SAVE_MOBILE : AUTH.FCM_SAVE_WEB;
+  return apiClient.post(route, {
+    token: normalizedToken,
+    platform: normalizedPlatform,
+  });
 }
 
 /**

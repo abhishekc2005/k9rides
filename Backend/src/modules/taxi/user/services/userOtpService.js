@@ -5,6 +5,7 @@ import { UserAuthSession } from '../models/UserAuthSession.js';
 import { User } from '../models/User.js';
 import { signAccessToken } from './authService.js';
 import { sendOtpSms } from '../../services/smsService.js';
+import { assignPushTokenToEntity } from '../../services/pushTokenService.js';
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const VERIFIED_SESSION_TTL_MS = 10 * 60 * 1000;
@@ -148,7 +149,7 @@ export const startUserOtp = async ({ phone }) => {
   };
 };
 
-export const verifyUserOtp = async ({ phone, otp }) => {
+export const verifyUserOtp = async ({ phone, otp, token, fcmToken, platform }) => {
   const session = await getOtpSession(phone);
   const normalizedOtp = String(otp || '').trim();
 
@@ -181,6 +182,14 @@ export const verifyUserOtp = async ({ phone, otp }) => {
     }
 
     ensureUserCanLogin(user);
+    const incomingToken = String(fcmToken || token || '').trim();
+    if (incomingToken) {
+      assignPushTokenToEntity(user, {
+        token: incomingToken,
+        platform: platform || 'web',
+      });
+      await user.save();
+    }
     await UserAuthSession.deleteOne({ _id: session._id });
     return {
       exists: true,

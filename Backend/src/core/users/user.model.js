@@ -140,7 +140,7 @@ const userSchema = new mongoose.Schema(
         }
     },
     {
-        collection: 'food_users',
+        collection: 'users',
         timestamps: true
     }
 );
