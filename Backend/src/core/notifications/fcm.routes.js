@@ -14,10 +14,14 @@ const router = express.Router();
 const MAX_TOKEN_LENGTH = 4096;
 const ROLE_TO_OWNER_TYPE = {
     USER: 'USER',
-    RESTAURANT: 'RESTAURANT',
-    DELIVERY_PARTNER: 'DELIVERY_PARTNER',
-    ADMIN: 'ADMIN',
     user: 'USER',
+    RESTAURANT: 'RESTAURANT',
+    restaurant: 'RESTAURANT',
+    DELIVERY_PARTNER: 'DELIVERY_PARTNER',
+    delivery_partner: 'DELIVERY_PARTNER',
+    delivery: 'DELIVERY_PARTNER',
+    ADMIN: 'ADMIN',
+    admin: 'ADMIN',
     driver: 'DRIVER',
     owner: 'OWNER',
     bus_driver: 'BUS_DRIVER',

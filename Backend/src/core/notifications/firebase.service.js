@@ -12,6 +12,7 @@ import { ServiceStore as TaxiServiceStore } from '../../modules/taxi/admin/model
 import { ServiceCenterStaff as TaxiServiceCenterStaff } from '../../modules/taxi/admin/models/ServiceCenterStaff.js';
 import { config } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
+import { AuthError } from '../auth/errors.js';
 
 const FIREBASE_MESSAGING_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
 const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -310,7 +311,7 @@ export const upsertFirebaseDeviceToken = async ({ ownerType, ownerId, token, pla
     const doc = await model.findById(ownerId);
     if (!doc) {
         console.error(`[FCM-DEBUG] upsert - Owner profile not found for id ${ownerId}`);
-        throw new Error('Owner profile not found.');
+        throw new AuthError('Session is stale or invalid for this account. Please login again.');
     }
 
     const field = getTokenFieldForOwnerPlatform(ownerType, normalizedPlatform);

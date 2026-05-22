@@ -30,6 +30,25 @@ const buildPhoneCandidates = (phone) => {
   return [...candidates];
 };
 
+const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildPhoneMatcher = (field, phone) => {
+  const normalizedPhone = normalizePhone(phone);
+  const candidates = buildPhoneCandidates(phone);
+  const clauses = [];
+
+  if (candidates.length > 0) {
+    clauses.push({ [field]: { $in: candidates } });
+  }
+
+  if (normalizedPhone) {
+    // Accept formatted storage like "+91 79741 61582" or "91-7974161582".
+    clauses.push({ [field]: { $regex: new RegExp(`${escapeRegex(normalizedPhone)}$`) } });
+  }
+
+  return clauses;
+};
+
 const generateOtp = () => String(Math.floor(1000 + Math.random() * 9000));
 const normalizeRole = (role) => {
   const normalized = String(role || 'driver').toLowerCase();
@@ -202,7 +221,10 @@ const isApprovedServiceCenterStaff = (staff) =>
 export const startDriverLoginOtp = async ({ phone, role = 'driver' }) => {
   const normalizedPhone = normalizePhone(phone);
   const normalizedRole = normalizeRole(role);
-  const phoneCandidates = buildPhoneCandidates(phone);
+  const ownerPhoneOr = [
+    ...buildPhoneMatcher('mobile', phone),
+    ...buildPhoneMatcher('phone', phone),
+  ];
 
   if (!normalizedPhone || normalizedPhone.length !== 10) {
     throw new ApiError(400, 'A valid 10-digit mobile number is required');
@@ -211,15 +233,15 @@ export const startDriverLoginOtp = async ({ phone, role = 'driver' }) => {
   const account =
     normalizedRole === 'owner'
       ? await Owner.findOne({
-          $or: [{ mobile: { $in: phoneCandidates } }, { phone: { $in: phoneCandidates } }],
+          $or: ownerPhoneOr,
         })
       : normalizedRole === 'service_center'
-        ? await ServiceStore.findOne({ owner_phone: { $in: phoneCandidates } })
+        ? await ServiceStore.findOne({ $or: buildPhoneMatcher('owner_phone', phone) })
       : normalizedRole === 'service_center_staff'
-        ? await ServiceCenterStaff.findOne({ phone: { $in: phoneCandidates } })
+        ? await ServiceCenterStaff.findOne({ $or: buildPhoneMatcher('phone', phone) })
       : normalizedRole === 'bus_driver'
-        ? await BusDriver.findOne({ phone: { $in: phoneCandidates } })
-        : await Driver.findOne({ phone: { $in: phoneCandidates } });
+        ? await BusDriver.findOne({ $or: buildPhoneMatcher('phone', phone) })
+        : await Driver.findOne({ $or: buildPhoneMatcher('phone', phone) });
 
   if (!account) {
     throw new ApiError(
