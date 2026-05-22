@@ -62,7 +62,6 @@ import {
   updateRentalVehicleType,
 } from "../../admin/services/adminService.js";
 import { resolveConfiguredGatewayCredentials } from "../../services/paymentGatewayService.js";
-import { assignPushTokenToEntity } from "../../services/pushTokenService.js";
 import {
   completeDriverOnboarding,
   getDriverOnboardingSession,
@@ -2603,94 +2602,6 @@ export const cancelDriverScheduledRide = async (req, res) => {
       rideId: String(ride._id || ""),
       status: ride.status || RIDE_STATUS.CANCELLED,
       liveStatus: ride.liveStatus || RIDE_LIVE_STATUS.CANCELLED,
-    },
-  });
-};
-
-const DRIVER_PUSH_ROLE_MODEL_MAP = {
-  driver: Driver,
-  owner: Owner,
-  bus_driver: BusDriver,
-  service_center: ServiceStore,
-  service_center_staff: ServiceCenterStaff,
-};
-
-const resolvePushTokenEntityForRole = async (req) => {
-  const role = String(req.auth?.role || "").toLowerCase();
-  const Model = DRIVER_PUSH_ROLE_MODEL_MAP[role];
-
-  if (!Model) {
-    throw new ApiError(403, "Unsupported role for driver push notifications");
-  }
-
-  const entity = await Model.findById(req.auth?.sub);
-
-  if (!entity) {
-    throw new ApiError(404, "Authenticated account not found");
-  }
-
-  if (
-    role === "driver" &&
-    (entity.approve === false ||
-      String(entity.status || "").toLowerCase() === "pending")
-  ) {
-    throw new ApiError(403, "Driver account is pending approval");
-  }
-
-  if (
-    role === "owner" &&
-    (entity.active === false ||
-      entity.approve === false ||
-      String(entity.status || "").toLowerCase() === "pending")
-  ) {
-    throw new ApiError(403, "Owner account is pending approval");
-  }
-
-  if (
-    role === "bus_driver" &&
-    (entity.active === false ||
-      entity.approve === false ||
-      ["pending", "blocked"].includes(String(entity.status || "").toLowerCase()))
-  ) {
-    throw new ApiError(403, "Bus driver account is pending approval");
-  }
-
-  if (
-    role === "service_center" &&
-    (entity.active === false ||
-      String(entity.status || "").toLowerCase() === "inactive")
-  ) {
-    throw new ApiError(403, "Service center account is inactive");
-  }
-
-  if (
-    role === "service_center_staff" &&
-    (entity.active === false ||
-      String(entity.status || "").toLowerCase() === "inactive")
-  ) {
-    throw new ApiError(403, "Service center staff account is inactive");
-  }
-
-  return entity;
-};
-
-export const saveDriverFcmToken = async (req, res) => {
-  const entity = await resolvePushTokenEntityForRole(req);
-
-  const saved = assignPushTokenToEntity(entity, {
-    token: req.body?.token,
-    platform: req.body?.platform,
-  });
-
-  await entity.save();
-
-  res.json({
-    success: true,
-    data: {
-      message: "FCM token saved successfully",
-      platform: saved.platform,
-      field: saved.fieldName,
-      role: String(req.auth?.role || "").toLowerCase(),
     },
   });
 };

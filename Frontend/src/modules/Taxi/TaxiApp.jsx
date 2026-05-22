@@ -15,6 +15,8 @@ import userBusService from './modules/user/services/busService';
 import { userService } from './modules/user/services/userService';
 import { syncUpcomingRideReminders } from './modules/user/utils/upcomingRideReminderService';
 import { getAuthenticatedDriverRole, getLocalDriverToken } from './modules/driver/services/registrationService';
+import { installBrowserFcmRegistration } from './shared/push/browserFcmRegistration';
+import { installNativeFcmBridge } from './shared/push/nativeFcmBridge';
 import './App.css';
 
 
@@ -645,6 +647,11 @@ const DriverEntryRedirect = () => {
 };
 
 function TaxiApp() {
+  useEffect(() => {
+    installNativeFcmBridge();
+    installBrowserFcmRegistration();
+  }, []);
+
   return (
     <>
       <SettingsProvider>

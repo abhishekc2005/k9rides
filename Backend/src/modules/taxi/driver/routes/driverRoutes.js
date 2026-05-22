@@ -45,7 +45,6 @@ import {
   getServiceCenterStaffMembers,
   getServiceCenterVehicles,
   listOwnerBusServices,
-  saveDriverFcmToken,
   getOwnerFleetDrivers,
   getOwnerFleetDashboard,
   getOwnerBusBookingCalendar,
@@ -172,17 +171,6 @@ driverRouter.post(
   "/scheduled-rides/:rideId/cancel",
   authenticate(["driver"]),
   asyncHandler(cancelDriverScheduledRide),
-);
-driverRouter.post(
-  "/fcm-token",
-  authenticate([
-    "driver",
-    "owner",
-    "bus_driver",
-    "service_center",
-    "service_center_staff",
-  ]),
-  asyncHandler(saveDriverFcmToken),
 );
 driverRouter.get(
   "/wallet",

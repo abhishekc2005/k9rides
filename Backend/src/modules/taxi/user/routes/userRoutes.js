@@ -28,7 +28,6 @@ import {
   loginUser,
   registerUser,
   requestAccountDeletion,
-  saveUserFcmToken,
   searchBuses,
   signupUser,
   startUserOtpRequest,
@@ -82,7 +81,6 @@ userRouter.post('/profile-image', asyncHandler(uploadUserProfileImage));
 userRouter.post('/auth/send-otp', asyncHandler(startUserOtpRequest));
 userRouter.post('/auth/verify-otp', asyncHandler(verifyUserOtpRequest));
 userRouter.post('/otp-login', asyncHandler(verifyUserPhoneForOtpLogin));
-userRouter.post('/fcm-token', authenticateOrResolveUser(['user']), asyncHandler(saveUserFcmToken));
 userRouter.get('/me', authenticateOrResolveUser(['user']), asyncHandler(getCurrentUser));
 userRouter.patch('/me', authenticateOrResolveUser(['user']), asyncHandler(updateCurrentUser));
 userRouter.get('/subscriptions/plans', authenticateOrResolveUser(['user']), asyncHandler(getAvailableSubscriptionPlans));

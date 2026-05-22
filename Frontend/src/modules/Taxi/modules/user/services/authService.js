@@ -1,4 +1,5 @@
 import api from '../../../shared/api/axiosInstance';
+import { BACKEND_ORIGIN } from '../../../shared/api/runtimeConfig';
 
 const decodeBase64Url = (value) => {
   const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
@@ -99,7 +100,18 @@ export const userAuthService = {
   getNotifications: () => api.get('/users/notifications', withUserAuth()),
   deleteNotification: (id) => api.delete(`/users/notifications/${id}`, withUserAuth()),
   clearAllNotifications: () => api.delete('/users/notifications', withUserAuth()),
-  saveFcmToken: (token, platform) => api.post('/users/fcm-token', { token, platform }, withUserAuth()),
+  saveFcmToken: (token, platform) => {
+    const normalizedPlatform = String(platform || 'web').trim().toLowerCase();
+    const endpoint =
+      normalizedPlatform === 'mobile' || normalizedPlatform === 'android' || normalizedPlatform === 'ios'
+        ? `${BACKEND_ORIGIN}/api/v1/fcm-tokens/mobile/save`
+        : `${BACKEND_ORIGIN}/api/v1/fcm-tokens/save`;
+    const payload =
+      endpoint.endsWith('/mobile/save')
+        ? { token }
+        : { token, platform: 'web' };
+    return api.post(endpoint, payload, withUserAuth());
+  },
   getRideBids: (rideId) => api.get(`/rides/${rideId}/bids`, withUserAuth()),
   acceptRideBid: (rideId, bidId) => api.post(`/rides/${rideId}/bids/${bidId}/accept`, {}, withUserAuth()),
   increaseRideBidCeiling: (rideId, incrementSteps = 1) =>

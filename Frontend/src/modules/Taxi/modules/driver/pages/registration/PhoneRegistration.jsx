@@ -151,7 +151,18 @@ const PhoneRegistration = () => {
                 state: nextState,
             });
         } catch (err) {
-            setError(err?.message || 'Unable to send OTP right now');
+            const backendMessage = String(
+                err?.message ||
+                err?.error ||
+                err?.data?.error ||
+                err?.data?.message ||
+                '',
+            ).trim();
+            if (backendMessage) {
+                setError(backendMessage);
+            } else {
+                setError('Unable to send OTP right now');
+            }
         } finally {
             setLoading(false);
         }

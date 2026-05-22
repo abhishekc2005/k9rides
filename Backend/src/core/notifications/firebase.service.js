@@ -5,6 +5,12 @@ import { FoodUser } from '../users/user.model.js';
 import { FoodRestaurant } from '../../modules/food/restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../modules/food/delivery/models/deliveryPartner.model.js';
 import { FoodAdmin } from '../admin/admin.model.js';
+import { User as TaxiUser } from '../../modules/taxi/user/models/User.js';
+import { Driver as TaxiDriver } from '../../modules/taxi/driver/models/Driver.js';
+import { BusDriver as TaxiBusDriver } from '../../modules/taxi/driver/models/BusDriver.js';
+import { Owner as TaxiOwner } from '../../modules/taxi/admin/models/Owner.js';
+import { ServiceStore as TaxiServiceStore } from '../../modules/taxi/admin/models/ServiceStore.js';
+import { ServiceCenterStaff as TaxiServiceCenterStaff } from '../../modules/taxi/admin/models/ServiceCenterStaff.js';
 import { config } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 
@@ -16,11 +22,37 @@ const OWNER_MODELS = {
     USER: FoodUser,
     RESTAURANT: FoodRestaurant,
     DELIVERY_PARTNER: FoodDeliveryPartner,
-    ADMIN: FoodAdmin
+    ADMIN: FoodAdmin,
+    TAXI_USER: TaxiUser,
+    DRIVER: TaxiDriver,
+    BUS_DRIVER: TaxiBusDriver,
+    OWNER: TaxiOwner,
+    SERVICE_CENTER: TaxiServiceStore,
+    SERVICE_CENTER_STAFF: TaxiServiceCenterStaff
 };
-const OWNER_TOKEN_FIELDS = {
-    web: 'fcmTokens',
-    mobile: 'fcmTokenMobile'
+const OWNER_ROLE_ALIASES = {
+    USER: 'USER',
+    RESTAURANT: 'RESTAURANT',
+    DELIVERY_PARTNER: 'DELIVERY_PARTNER',
+    ADMIN: 'ADMIN',
+    TAXI_USER: 'TAXI_USER',
+    DRIVER: 'DRIVER',
+    BUS_DRIVER: 'BUS_DRIVER',
+    OWNER: 'OWNER',
+    SERVICE_CENTER: 'SERVICE_CENTER',
+    SERVICE_CENTER_STAFF: 'SERVICE_CENTER_STAFF'
+};
+const OWNER_TOKEN_FIELD_CONFIG = {
+    USER: { web: 'fcmTokens', mobile: 'fcmTokenMobile' },
+    RESTAURANT: { web: 'fcmTokens', mobile: 'fcmTokenMobile' },
+    DELIVERY_PARTNER: { web: 'fcmTokens', mobile: 'fcmTokenMobile' },
+    ADMIN: { web: 'fcmTokens', mobile: 'fcmTokenMobile' },
+    TAXI_USER: { web: 'fcmTokens', mobile: 'fcmTokenMobile' },
+    DRIVER: { web: 'fcmTokenWeb', mobile: 'fcmTokenMobile' },
+    BUS_DRIVER: { web: 'fcmTokenWeb', mobile: 'fcmTokenMobile' },
+    OWNER: { web: 'fcmTokenWeb', mobile: 'fcmTokenMobile' },
+    SERVICE_CENTER: { web: 'fcmTokenWeb', mobile: 'fcmTokenMobile' },
+    SERVICE_CENTER_STAFF: { web: 'fcmTokenWeb', mobile: 'fcmTokenMobile' }
 };
 const OWNER_APP_PREFIXES = {
     USER: '👤 [User]',
@@ -207,31 +239,57 @@ const shouldRemoveTokenFromError = (errorJson, response) => {
     return status === 404 || message.includes('UNREGISTERED') || message.includes('INVALID_ARGUMENT');
 };
 
-const getOwnerModel = (ownerType) => OWNER_MODELS[String(ownerType || '').toUpperCase()] || null;
+const normalizeOwnerType = (ownerType) => {
+    const normalized = String(ownerType || '').trim().toUpperCase();
+    return OWNER_ROLE_ALIASES[normalized] || null;
+};
 
-const getTokenFieldForPlatform = (platform) => OWNER_TOKEN_FIELDS[platform === 'mobile' ? 'mobile' : 'web'];
+const getOwnerModel = (ownerType) => OWNER_MODELS[normalizeOwnerType(ownerType)] || null;
+
+const getTokenFieldForOwnerPlatform = (ownerType, platform) => {
+    const normalizedOwnerType = normalizeOwnerType(ownerType);
+    const config = OWNER_TOKEN_FIELD_CONFIG[normalizedOwnerType];
+    if (!config) return null;
+    return platform === 'mobile' ? config.mobile : config.web;
+};
 
 const normalizeTokenList = (tokens = []) => {
     const normalized = [...new Set((Array.isArray(tokens) ? tokens : [tokens]).map(sanitizeString).filter(Boolean))];
     return normalized.slice(-10);
 };
 
+const readTokenFieldAsList = (doc, fieldName) => {
+    if (!doc || !fieldName) return [];
+    return normalizeTokenList(doc[fieldName] || []);
+};
+
+const writeTokenFieldFromList = (doc, fieldName, tokens) => {
+    const normalizedTokens = normalizeTokenList(tokens);
+    if (!fieldName) return;
+    if (Array.isArray(doc[fieldName])) {
+        doc[fieldName] = normalizedTokens;
+        return;
+    }
+    doc[fieldName] = normalizedTokens[0] || '';
+};
+
 const readTokensFromDoc = (doc, platform) => {
     if (!doc) return [];
     if (platform) {
-        return normalizeTokenList(doc[getTokenFieldForPlatform(platform)] || []);
+        const field = getTokenFieldForOwnerPlatform(doc.__ownerType, platform);
+        return readTokenFieldAsList(doc, field);
     }
-    return normalizeTokenList([
-        ...(Array.isArray(doc.fcmTokens) ? doc.fcmTokens : []),
-        ...(Array.isArray(doc.fcmTokenMobile) ? doc.fcmTokenMobile : [])
-    ]);
+    const webField = getTokenFieldForOwnerPlatform(doc.__ownerType, 'web');
+    const mobileField = getTokenFieldForOwnerPlatform(doc.__ownerType, 'mobile');
+    return normalizeTokenList([...readTokenFieldAsList(doc, webField), ...readTokenFieldAsList(doc, mobileField)]);
 };
 
 export const listOwnerTokens = async ({ ownerType, ownerId, platform }) => {
     if (!ownerType || !ownerId) return [];
     const model = getOwnerModel(ownerType);
     if (!model) return [];
-    const doc = await model.findById(ownerId).select('fcmTokens fcmTokenMobile').lean();
+    const doc = await model.findById(ownerId).select('fcmTokens fcmTokenMobile fcmTokenWeb').lean();
+    if (doc) doc.__ownerType = ownerType;
     return readTokensFromDoc(doc, platform);
 };
 
@@ -257,12 +315,15 @@ export const upsertFirebaseDeviceToken = async ({ ownerType, ownerId, token, pla
         throw new Error('Owner profile not found.');
     }
 
-    const field = getTokenFieldForPlatform(normalizedPlatform);
-    const existingTokens = Array.isArray(doc[field]) ? doc[field] : [];
+    const field = getTokenFieldForOwnerPlatform(ownerType, normalizedPlatform);
+    if (!field) {
+        throw new Error(`Unsupported owner type: ${ownerType}`);
+    }
+    const existingTokens = readTokenFieldAsList(doc, field);
     console.log(`[FCM-DEBUG] upsert - Current tokens in DB count: ${existingTokens.length}`);
     
     const tokens = normalizeTokenList([...existingTokens, normalizedToken]);
-    doc[field] = tokens;
+    writeTokenFieldFromList(doc, field, tokens);
     
     await doc.save();
     console.log(`[FCM-DEBUG] upsert - Token list updated. New count: ${tokens.length}`);
@@ -284,12 +345,17 @@ export const removeFirebaseDeviceToken = async ({ ownerType, ownerId, token, pla
     }
 
     if (platform) {
-        const field = getTokenFieldForPlatform(platform);
-        doc[field] = normalizeTokenList((Array.isArray(doc[field]) ? doc[field] : []).filter((t) => t !== normalizedToken));
+        const field = getTokenFieldForOwnerPlatform(ownerType, platform);
+        const existing = readTokenFieldAsList(doc, field);
+        writeTokenFieldFromList(doc, field, existing.filter((t) => t !== normalizedToken));
     } else {
-        doc.fcmTokens = normalizeTokenList((Array.isArray(doc.fcmTokens) ? doc.fcmTokens : []).filter((t) => t !== normalizedToken));
-        doc.fcmTokenMobile = normalizeTokenList(
-            (Array.isArray(doc.fcmTokenMobile) ? doc.fcmTokenMobile : []).filter((t) => t !== normalizedToken)
+        const webField = getTokenFieldForOwnerPlatform(ownerType, 'web');
+        const mobileField = getTokenFieldForOwnerPlatform(ownerType, 'mobile');
+        writeTokenFieldFromList(doc, webField, readTokenFieldAsList(doc, webField).filter((t) => t !== normalizedToken));
+        writeTokenFieldFromList(
+            doc,
+            mobileField,
+            readTokenFieldAsList(doc, mobileField).filter((t) => t !== normalizedToken)
         );
     }
 
@@ -389,10 +455,15 @@ export const sendNotificationToOwner = async ({ ownerType, ownerId, payload, pla
             const doc = model ? await model.findById(ownerId) : null;
             if (doc) {
                 const fieldNames = platform
-                    ? [getTokenFieldForPlatform(platform)]
-                    : [OWNER_TOKEN_FIELDS.web, OWNER_TOKEN_FIELDS.mobile];
+                    ? [getTokenFieldForOwnerPlatform(ownerType, platform)]
+                    : [getTokenFieldForOwnerPlatform(ownerType, 'web'), getTokenFieldForOwnerPlatform(ownerType, 'mobile')];
                 for (const field of fieldNames) {
-                    doc[field] = normalizeTokenList((Array.isArray(doc[field]) ? doc[field] : []).filter((t) => !invalidTokens.includes(t)));
+                    if (!field) continue;
+                    writeTokenFieldFromList(
+                        doc,
+                        field,
+                        readTokenFieldAsList(doc, field).filter((t) => !invalidTokens.includes(t))
+                    );
                 }
                 await doc.save();
             }

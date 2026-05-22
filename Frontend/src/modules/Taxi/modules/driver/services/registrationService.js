@@ -1,4 +1,5 @@
 import api from "../../../shared/api/axiosInstance";
+import { BACKEND_ORIGIN } from "../../../shared/api/runtimeConfig";
 
 const STORAGE_KEY = "driverRegistrationSession";
 const DRIVER_AUTH_KEYS = ["token", "driverToken", "driverInfo", "role", "driverRole", "chatRole"];
@@ -216,7 +217,19 @@ export const getDriverEmergencyContacts = () =>
   api.get("/drivers/emergency-contacts", withDriverAuth());
 
 export const saveDriverFcmToken = (token, platform) =>
-  api.post("/drivers/fcm-token", { token, platform }, withDriverAuth());
+  api.post(
+    (String(platform || "web").trim().toLowerCase() === "mobile" ||
+      String(platform || "web").trim().toLowerCase() === "android" ||
+      String(platform || "web").trim().toLowerCase() === "ios")
+      ? `${BACKEND_ORIGIN}/api/v1/fcm-tokens/mobile/save`
+      : `${BACKEND_ORIGIN}/api/v1/fcm-tokens/save`,
+    (String(platform || "web").trim().toLowerCase() === "mobile" ||
+      String(platform || "web").trim().toLowerCase() === "android" ||
+      String(platform || "web").trim().toLowerCase() === "ios")
+      ? { token }
+      : { token, platform: "web" },
+    withDriverAuth(),
+  );
 export const addDriverEmergencyContact = (payload) =>
   api.post("/drivers/emergency-contacts", payload, withDriverAuth());
 export const deleteDriverEmergencyContact = (contactId) =>
