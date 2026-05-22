@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import AdminPageHeader from '../../components/ui/AdminPageHeader';
 
-const BASE = globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin';
+const BASE = globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin';
 const MotionDiv = motion.div;
 const FILE_BASE = globalThis.__LEGACY_BACKEND_ORIGIN__ || '';
 
@@ -126,7 +126,7 @@ const ManageFleet = () => {
         fetch(`${BASE}/owner-management/manage-fleet`, { headers }),
         fetch(`${BASE}/owner-management/manage-owners`, { headers }), // Fetching owners
         fetch(`${BASE}/service-locations`, { headers }),
-        fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/common/ride_modules`, { headers })
+        fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/common/ride_modules`, { headers })
       ]);
 
       const fData = await fleetRes.json();

@@ -31,7 +31,7 @@ const WithdrawalRequestOwnerDetail = () => {
         setIsLoading(true);
         const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken'));
         const res = await fetch(
-          `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/wallet/owners/${id}/withdrawals?limit=${itemsPerPage}`,
+          `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin/wallet/owners/${id}/withdrawals?limit=${itemsPerPage}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           },

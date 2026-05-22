@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { getUnifiedAdminToken } from '../../services/adminSession';
 
-const BASE = () => `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/payment-methods`;
+const BASE = () => `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin/payment-methods`;
 
 const inputClass =
   'w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-800 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors';

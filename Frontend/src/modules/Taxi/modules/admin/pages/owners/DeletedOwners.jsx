@@ -11,7 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import AdminPageHeader from "../../components/ui/AdminPageHeader";
 
-const BASE = `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin`;
+const BASE = `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin`;
 
 const getOwnerName = (owner) =>
   owner?.name || owner?.user_id?.name || owner?.company_name || "-";

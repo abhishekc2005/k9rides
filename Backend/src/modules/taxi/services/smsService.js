@@ -4,7 +4,7 @@ import { AdminBusinessSetting } from '../admin/models/AdminBusinessSetting.js';
 
 const SMS_INDIA_HUB_ENDPOINT = 'http://cloud.smsindiahub.in/api/mt/SendSMS';
 const DLT_TEMPLATE_TEXT =
-  'Welcome to the ##var## powered by SMSINDIAHUB. Your OTP for registration is ##var##';
+  'Welcome to ##var## Powered by IIDMTB. Use OTP ##var## to verify your login.';
 const DEFAULT_BRAND_NAME = 'App';
 
 const isTruthy = (value) => ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
@@ -206,7 +206,12 @@ export const sendOtpSms = async ({ phone, otp, purpose = 'otp' }) => {
 
   const config = getSmsIndiaHubConfig();
   const brandName = await getConfiguredBrandName();
-  const authModes = config.apiKey ? ['apiKey', 'credentials'] : ['credentials'];
+  const hasCredentials = Boolean(config.user && config.password);
+  const authModes = config.apiKey
+    ? hasCredentials
+      ? ['apiKey', 'credentials']
+      : ['apiKey']
+    : ['credentials'];
   let finalResponse = null;
   let finalResponseText = '';
   let delivered = false;

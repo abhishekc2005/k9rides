@@ -21,7 +21,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
-const BASE = globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin/promos';
+const BASE = globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin/promos';
 const LIST_PATH = '/admin/promotions/promo-codes';
 const CREATE_PATH = '/admin/promotions/promo-codes/create';
 const Motion = motion;
@@ -190,7 +190,7 @@ const PromoCodes = () => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const bootstrapRes = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/promotions/bootstrap`, {
+      const bootstrapRes = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin/promotions/bootstrap`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -206,10 +206,10 @@ const PromoCodes = () => {
 
       const [promosRes, locRes, usersRes] = await Promise.all([
         fetch(BASE, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin/service-locations', {
+        fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin/service-locations', {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin/promos/users', {
+        fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin/promos/users', {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);

@@ -61,7 +61,7 @@ const OwnerDashboard = () => {
         setIsLoading(true);
         const token = getUnifiedAdminToken();
         
-        const response = await fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin/owner-management/dashboard', {
+        const response = await fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin/owner-management/dashboard', {
           headers: {
             'Authorization': `Bearer ${token}`
           }

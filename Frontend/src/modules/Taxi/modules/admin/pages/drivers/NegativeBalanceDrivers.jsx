@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Eye, FileSearch, MoreHorizontal, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const BASE = () => `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/wallet/drivers/negative-balance`;
+const BASE = () => `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin/wallet/drivers/negative-balance`;
 
 const NegativeBalanceDrivers = () => {
   const navigate = useNavigate();

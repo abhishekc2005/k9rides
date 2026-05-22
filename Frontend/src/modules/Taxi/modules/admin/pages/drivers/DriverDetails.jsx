@@ -15,6 +15,7 @@ import {
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { adminService } from '../../services/adminService';
 import { DELHI_CENTER, HAS_VALID_GOOGLE_MAPS_KEY, useAppGoogleMapsLoader } from '../../utils/googleMaps';
+import { API_BASE_URL } from '../../../../shared/api/runtimeConfig';
 import BikeIcon from '@/assets/icons/bike.png';
 import CarIcon from '@/assets/icons/car.png';
 import AutoIcon from '@/assets/icons/auto.png';
@@ -252,7 +253,7 @@ const DriverDetails = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const [res, walletRes] = await Promise.all([
         fetch(
-          `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/drivers/${id}/profile?t=${Date.now()}`,
+          `${API_BASE_URL}/admin/drivers/${id}/profile?t=${Date.now()}`,
           {
             headers,
             cache: 'no-store',
@@ -690,7 +691,7 @@ const DriverDetails = () => {
                       try {
                         const token = (localStorage.getItem('admin_accessToken') || localStorage.getItem('adminToken'));
                         await fetch(
-                          `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/wallet/drivers/${id}/adjust`,
+                          `${API_BASE_URL}/admin/wallet/drivers/${id}/adjust`,
                           {
                             method: 'POST',
                             headers: {
@@ -946,7 +947,7 @@ const DriverDetails = () => {
                                     };
 
                                     const response = await fetch(
-                                      `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/drivers/${id}`,
+                                      `${API_BASE_URL}/admin/drivers/${id}`,
                                       {
                                         method: 'PATCH',
                                         headers: {
@@ -1015,7 +1016,7 @@ const DriverDetails = () => {
                                     };
 
                                     const response = await fetch(
-                                      `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/drivers/${id}`,
+                                      `${API_BASE_URL}/admin/drivers/${id}`,
                                       {
                                         method: 'PATCH',
                                         headers: {

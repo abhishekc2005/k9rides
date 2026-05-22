@@ -116,7 +116,7 @@ const EditDriver = () => {
     const fetchInitialData = async () => {
       setIsFetching(true);
       try {
-        const locRes = await fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin/service-locations', {
+        const locRes = await fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin/service-locations', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const locData = await locRes.json();
@@ -125,7 +125,7 @@ const EditDriver = () => {
           setLocations(Array.isArray(results) ? results : []);
         }
 
-        const countRes = await fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/countries', {
+        const countRes = await fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/countries', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const countData = await countRes.json();
@@ -135,7 +135,7 @@ const EditDriver = () => {
         }
 
         // Fetching driver details
-        const response = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/drivers/${id}`, {
+        const response = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin/drivers/${id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -210,7 +210,7 @@ const EditDriver = () => {
       if (!formData.area || !formData.transportType) return;
       try {
         const typeFilter = formData.transportType.toLowerCase() === 'delivery' ? 'delivery' : 'taxi';
-        const res = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/types/${formData.area}?transport_type=${typeFilter}`);
+        const res = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/types/${formData.area}?transport_type=${typeFilter}`);
         const data = await res.json();
         if (data.success) {
           setVehicleTypes(Array.isArray(data.data) ? data.data : (data.data?.results || []));
@@ -341,7 +341,7 @@ const EditDriver = () => {
         },
       };
 
-      const response = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/drivers/${id}`, {
+      const response = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin/drivers/${id}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

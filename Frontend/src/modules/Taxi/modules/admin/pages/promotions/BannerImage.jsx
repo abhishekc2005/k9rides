@@ -36,13 +36,13 @@ const BannerImage = () => {
   const [imagePreview, setImagePreview] = useState(null);
 
   const token = getUnifiedAdminToken() || '';
-  const baseUrl = globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin';
+  const baseUrl = globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin';
 
   const resolveImageUrl = useCallback(
     (img) => {
       if (!img) return null;
       if (img.startsWith('data:') || img.startsWith('http')) return img;
-      const rootUrl = baseUrl.replace('/api/v1/admin', '');
+      const rootUrl = baseUrl.replace('/api/v1/taxi/admin', '');
       return `${rootUrl}/${img.startsWith('/') ? img.slice(1) : img}`;
     },
     [baseUrl],
@@ -51,7 +51,7 @@ const BannerImage = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const bootstrapRes = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/promotions/bootstrap`, {
+      const bootstrapRes = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin/promotions/bootstrap`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

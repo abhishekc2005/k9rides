@@ -57,7 +57,7 @@ const ReferralDashboard = () => {
     const fetchDashboard = async () => {
       try {
         const token = getUnifiedAdminToken() || '';
-        const res = await fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin/referral/dashboard', {
+        const res = await fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin/referral/dashboard', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const json = await res.json();

@@ -14,6 +14,8 @@
     "worker:payment": "node src/queues/workers/payment.worker.js",
     "worker:maintenance": "node src/queues/workers/maintenance.worker.js",
     "seed:default-credentials": "node scripts/seed-default-credentials.js",
+    "seed:taxi-driver-default": "node scripts/seed-taxi-driver-default.js",
+    "seed:food-restaurant-delivery-default": "node scripts/seed-food-restaurant-delivery-default.js",
     "migrate:fcm-tokens": "node scripts/migrate-fcm-tokens-to-profile-models.js",
     "migrate:order-payments": "node scripts/migrate-orders-to-transactions.js",
     "cleanup:legacy-collections": "node scripts/cleanup-legacy-collections.js",

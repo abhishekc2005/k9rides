@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Eye, FileSearch, Search } from 'lucide-react';
 import { getUnifiedAdminToken } from '../../services/adminSession';
 
-const BASE = () => `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin/wallet/drivers/withdrawals`;
+const BASE = () => `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin/wallet/drivers/withdrawals`;
 
 const formatDateTime = (value) => {
   if (!value) return '-';

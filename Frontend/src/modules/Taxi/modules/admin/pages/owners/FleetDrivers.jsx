@@ -17,7 +17,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import AdminPageHeader from '../../components/ui/AdminPageHeader';
 
-const BASE = `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin`;
+const BASE = `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin`;
 
 const isApproved = (driver) => driver?.approve === true || driver?.approve === 1 || driver?.status === 'approved';
 

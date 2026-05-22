@@ -81,8 +81,8 @@ const ServiceConfig = () => {
         const token = getUnifiedAdminToken() || '';
         
         const [locRes, rideRes] = await Promise.all([
-          fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/admin/service-locations', { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/common/ride_modules', { headers: { 'Authorization': `Bearer ${token}` } })
+          fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin/service-locations', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/common/ride_modules', { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
 
         const locData = await locRes.json();
@@ -125,7 +125,7 @@ const ServiceConfig = () => {
       if (!selLocId) return;
       try {
         const token = getUnifiedAdminToken() || '';
-        const res = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/types/${selLocId}`, {
+        const res = await fetch(`${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/types/${selLocId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

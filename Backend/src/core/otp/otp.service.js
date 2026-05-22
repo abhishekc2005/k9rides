@@ -10,6 +10,14 @@ const generateOtpCode = () => {
     return String(code);
 };
 
+const normalizeOtpPhone = (phone) => {
+    const digits = String(phone || '').replace(/\D/g, '').trim();
+    if (digits.length === 12 && digits.startsWith('91')) {
+        return digits.slice(2);
+    }
+    return digits.slice(-10);
+};
+
 /**
  * Sends SMS via SMS India Hub API
  * @param {string} phone - 10-digit mobile number (will be prefixed with 91)
@@ -70,7 +78,12 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
 };
 
 export const createOrUpdateOtp = async (phone) => {
-    const existing = await FoodOtp.findOne({ phone });
+    const normalizedPhone = normalizeOtpPhone(phone);
+    if (!normalizedPhone || normalizedPhone.length < 8) {
+        throw new ValidationError('A valid phone number is required');
+    }
+
+    const existing = await FoodOtp.findOne({ phone: normalizedPhone });
     const now = new Date();
 
     // Rate Limiting Logic
@@ -93,16 +106,16 @@ export const createOrUpdateOtp = async (phone) => {
     let otp;
     if (config.useDefaultOtp) {
         otp = '1234';
-        logger.info(`Default OTP mode enabled â€“ OTP is ${otp} for phone ${phone}`);
+        logger.info(`Default OTP mode enabled â€“ OTP is ${otp} for phone ${normalizedPhone}`);
     } else {
         otp = generateOtpCode();
     }
 
     // Dev debugging: print generated OTP in backend logs.
     // Keep this enabled only for local/testing usage.
-    logger.info(`[OTP DEBUG] Generated OTP ${otp} for phone ${phone}`);
+    logger.info(`[OTP DEBUG] Generated OTP ${otp} for phone ${normalizedPhone}`);
     // eslint-disable-next-line no-console
-    console.log(`[OTP DEBUG] Generated OTP ${otp} for phone ${phone}`);
+    console.log(`[OTP DEBUG] Generated OTP ${otp} for phone ${normalizedPhone}`);
 
     // Expiry calculation: prioritize seconds, then minutes, then fallback to MS string
     let ttlMs;
@@ -123,7 +136,7 @@ export const createOrUpdateOtp = async (phone) => {
         await existing.save();
     } else {
         await FoodOtp.create({ 
-            phone, 
+            phone: normalizedPhone, 
             otp, 
             expiresAt,
             requestCount: 1,
@@ -133,14 +146,19 @@ export const createOrUpdateOtp = async (phone) => {
 
     // Only send SMS if not in default OTP mode
     if (!config.useDefaultOtp) {
-        await sendSmsViaIndiaHub(phone, otp);
+        await sendSmsViaIndiaHub(normalizedPhone, otp);
     }
 
     return otp;
 };
 
 export const verifyOtp = async (phone, otp) => {
-    const record = await FoodOtp.findOne({ phone });
+    const normalizedPhone = normalizeOtpPhone(phone);
+    if (!normalizedPhone || normalizedPhone.length < 8) {
+        return { valid: false, reason: 'Invalid phone format' };
+    }
+
+    const record = await FoodOtp.findOne({ phone: normalizedPhone });
     if (!record) {
         return { valid: false, reason: 'OTP not found' };
     }
@@ -158,14 +176,14 @@ export const verifyOtp = async (phone, otp) => {
     if (record.otp !== otp) {
         // Do not block auth response on attempts write.
         void record.save().catch((err) => {
-            logger.warn(`[OTP VERIFY] Failed to persist attempts for ${phone}: ${err.message}`);
+            logger.warn(`[OTP VERIFY] Failed to persist attempts for ${normalizedPhone}: ${err.message}`);
         });
         return { valid: false, reason: 'Invalid OTP' };
     }
 
     // OTP is valid - return immediately and delete in background.
     void record.deleteOne().catch((err) => {
-        logger.warn(`[OTP VERIFY] Failed to delete OTP record for ${phone}: ${err.message}`);
+        logger.warn(`[OTP VERIFY] Failed to delete OTP record for ${normalizedPhone}: ${err.message}`);
     });
     return { valid: true };
 };

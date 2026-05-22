@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTaxiTransportTypes } from '../../../../shared/hooks/useTaxiTransportTypes';
 import AdminPageHeader from '../../components/ui/AdminPageHeader';
 
-const BASE = `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/admin`;
+const BASE = `${globalThis.__LEGACY_BACKEND_ORIGIN__}/api/v1/taxi/admin`;
 
 const inputClass =
   'w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-800 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-colors';
