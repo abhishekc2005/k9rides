@@ -6,6 +6,11 @@ const otpSchema = new mongoose.Schema(
             type: String,
             required: true
         },
+        scope: {
+            type: String,
+            default: 'default',
+            index: true
+        },
         otp: {
             type: String,
             required: true
@@ -34,7 +39,7 @@ const otpSchema = new mongoose.Schema(
 );
 
 // TTL index for automatic expiry
-otpSchema.index({ phone: 1 });
+otpSchema.index({ phone: 1, scope: 1 });
 otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const FoodOtp = mongoose.model('FoodOtp', otpSchema);

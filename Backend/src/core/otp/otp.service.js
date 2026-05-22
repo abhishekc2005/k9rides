@@ -18,6 +18,11 @@ const normalizeOtpPhone = (phone) => {
     return digits.slice(-10);
 };
 
+const normalizeOtpScope = (scope) => {
+    const normalized = String(scope || '').trim().toLowerCase();
+    return normalized || 'default';
+};
+
 /**
  * Sends SMS via SMS India Hub API
  * @param {string} phone - 10-digit mobile number (will be prefixed with 91)
@@ -77,13 +82,21 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
     }
 };
 
-export const createOrUpdateOtp = async (phone) => {
+export const createOrUpdateOtp = async (phone, scope = 'default') => {
     const normalizedPhone = normalizeOtpPhone(phone);
+    const normalizedScope = normalizeOtpScope(scope);
     if (!normalizedPhone || normalizedPhone.length < 8) {
         throw new ValidationError('A valid phone number is required');
     }
 
-    const existing = await FoodOtp.findOne({ phone: normalizedPhone });
+    let existing = await FoodOtp.findOne({
+        phone: normalizedPhone,
+        $or: [{ scope: normalizedScope }, { scope: { $exists: false } }]
+    }).sort({ createdAt: -1 });
+
+    if (existing && String(existing.scope || '') !== normalizedScope) {
+        existing.scope = normalizedScope;
+    }
     const now = new Date();
 
     // Rate Limiting Logic
@@ -93,7 +106,7 @@ export const createOrUpdateOtp = async (phone) => {
 
         if (isInWindow) {
             if (existing.requestCount >= (config.otpRateLimit || 3)) {
-                logger.warn(`Rate limit exceeded for phone ${phone}`);
+                logger.warn(`Rate limit exceeded for phone ${phone} scope=${normalizedScope}`);
                 throw new ValidationError(`Too many OTP requests. Please try again after ${Math.ceil(windowMs / 60000)} minutes.`);
             }
             existing.requestCount += 1;
@@ -135,8 +148,9 @@ export const createOrUpdateOtp = async (phone) => {
         existing.lastRequestAt = now;
         await existing.save();
     } else {
-        await FoodOtp.create({ 
+        await FoodOtp.create({
             phone: normalizedPhone, 
+            scope: normalizedScope,
             otp, 
             expiresAt,
             requestCount: 1,
@@ -152,13 +166,17 @@ export const createOrUpdateOtp = async (phone) => {
     return otp;
 };
 
-export const verifyOtp = async (phone, otp) => {
+export const verifyOtp = async (phone, otp, scope = 'default') => {
     const normalizedPhone = normalizeOtpPhone(phone);
+    const normalizedScope = normalizeOtpScope(scope);
     if (!normalizedPhone || normalizedPhone.length < 8) {
         return { valid: false, reason: 'Invalid phone format' };
     }
 
-    const record = await FoodOtp.findOne({ phone: normalizedPhone });
+    const record = await FoodOtp.findOne({
+        phone: normalizedPhone,
+        $or: [{ scope: normalizedScope }, { scope: { $exists: false } }]
+    }).sort({ createdAt: -1 });
     if (!record) {
         return { valid: false, reason: 'OTP not found' };
     }

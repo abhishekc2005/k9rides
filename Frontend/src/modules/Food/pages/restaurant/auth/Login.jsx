@@ -78,7 +78,7 @@ export default function RestaurantLogin() {
       }))
       navigate("/food/restaurant/otp")
     } catch (apiErr) {
-      setError(apiErr?.response?.data?.message || "Failed to send OTP")
+      setError(apiErr?.response?.data?.error || apiErr?.response?.data?.message || "Failed to send OTP")
     } finally {
       setIsSending(false)
     }

@@ -60,7 +60,7 @@ export const requestUserOtp = async (phone) => {
     throw new ValidationError("Phone is required");
   }
 
-  const otp = await createOrUpdateOtp(phone);
+  const otp = await createOrUpdateOtp(phone, "user");
   // TODO: integrate SMS provider here
   const shouldExposeOtp =
     config.nodeEnv !== "production" || config.useDefaultOtp;
@@ -77,7 +77,7 @@ export const verifyUserOtpAndLogin = async (
 ) => {
   const loginStart = Date.now();
   logger.info(`[Auth Verify] Start verifyUserOtpAndLogin phone=${phone}`);
-  const result = await verifyOtp(phone, otp);
+  const result = await verifyOtp(phone, otp, "user");
   logger.info(
     `[Auth Verify] OTP checked in ${Date.now() - loginStart}ms phone=${phone} valid=${result.valid}`,
   );
@@ -305,7 +305,7 @@ export const requestRestaurantOtp = async (phone) => {
   if (!phone) {
     throw new ValidationError("Phone is required");
   }
-  const otp = await createOrUpdateOtp(phone);
+  const otp = await createOrUpdateOtp(phone, "restaurant");
   // Only expose OTP in response when in default/dev mode — never in production with real SMS
   const shouldExposeOtp =
     config.nodeEnv !== "production" || config.useDefaultOtp;
@@ -313,7 +313,7 @@ export const requestRestaurantOtp = async (phone) => {
 };
 
 export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform) => {
-  const result = await verifyOtp(phone, otp);
+  const result = await verifyOtp(phone, otp, "restaurant");
   if (!result.valid) {
     throw new AuthError(result.reason || "OTP verification failed");
   }
@@ -412,7 +412,7 @@ export const requestDeliveryOtp = async (phone) => {
   if (!phone) {
     throw new ValidationError("Phone is required");
   }
-  const otp = await createOrUpdateOtp(phone);
+  const otp = await createOrUpdateOtp(phone, "delivery");
   // Only expose OTP in response when in default/dev mode — never in production with real SMS
   const shouldExposeOtp =
     config.nodeEnv !== "production" || config.useDefaultOtp;
@@ -425,7 +425,7 @@ const normalizePhoneForDelivery = (phone) => {
 };
 
 export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) => {
-  const result = await verifyOtp(phone, otp);
+  const result = await verifyOtp(phone, otp, "delivery");
   if (!result.valid) {
     throw new AuthError(result.reason || "OTP verification failed");
   }
