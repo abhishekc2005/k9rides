@@ -129,7 +129,7 @@ const HeaderGreeting = () => {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.05, ease: 'easeOut' }}
-        className="mt-3 space-y-2.5"
+        className="sticky top-0 z-40 mt-3 space-y-2.5 bg-white/90 pb-2 pt-1 backdrop-blur-md"
       >
         <motion.button
           type="button"

@@ -13,13 +13,12 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
   const [step, setStep] = useState(1) // 1: Phone, 2: OTP
-  const [view, setView] = useState(viewType) 
   const [loading, setLoading] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
   const navigate = useNavigate()
   const submitting = useRef(false)
-  const selectorThemeSnapshotRef = useRef({ captured: false, hadDarkClass: false, appliedByThisView: false })
+  const selectorThemeSnapshotRef = useRef({ appliedByThisView: false })
 
   const getWebFcmTokenForLogin = async () => {
     if (typeof window === "undefined" || typeof navigator === "undefined") {
@@ -80,39 +79,33 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
     return normalizedToken
   }
 
-  // Sync view state with viewType prop
-  useEffect(() => {
-    setView(viewType)
-  }, [viewType])
-
   // Keep /login/services visually consistent (light) regardless of global app theme.
   // Scope-limited: only active while selector view is mounted.
   useLayoutEffect(() => {
     if (typeof document === "undefined") return
     const html = document.documentElement
     const body = document.body
+    const root = document.getElementById("root")
     const snapshot = selectorThemeSnapshotRef.current
     let htmlObserver = null
     let bodyObserver = null
+    let rootObserver = null
 
-    if (view !== "selector") {
-      if (snapshot.appliedByThisView) {
-        if (snapshot.hadDarkClass) {
-          html.classList.add("dark")
-          if (body) body.classList.add("dark")
-        } else {
-          html.classList.remove("dark")
-          if (body) body.classList.remove("dark")
-        }
+    const applyPersistedTheme = () => {
+      const savedTheme = localStorage.getItem("appTheme") || "light"
+      if (savedTheme === "dark") {
+        html.classList.add("dark")
+        if (body) body.classList.add("dark")
+      } else {
+        html.classList.remove("dark")
+        if (body) body.classList.remove("dark")
       }
-      snapshot.captured = false
-      snapshot.appliedByThisView = false
-      return
     }
 
-    if (!snapshot.captured) {
-      snapshot.hadDarkClass = html.classList.contains("dark") || Boolean(body?.classList.contains("dark"))
-      snapshot.captured = true
+    if (viewType !== "selector") {
+      if (snapshot.appliedByThisView) applyPersistedTheme()
+      snapshot.appliedByThisView = false
+      return
     }
 
     const enforceLight = () => {
@@ -123,6 +116,10 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
       }
       if (body?.classList.contains("dark")) {
         body.classList.remove("dark")
+        changed = true
+      }
+      if (root?.classList.contains("dark")) {
+        root.classList.remove("dark")
         changed = true
       }
       if (changed) snapshot.appliedByThisView = true
@@ -137,22 +134,20 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
       bodyObserver = new MutationObserver(enforceLight)
       bodyObserver.observe(body, { attributes: true, attributeFilter: ["class"] })
     }
+    if (root) {
+      rootObserver = new MutationObserver(enforceLight)
+      rootObserver.observe(root, { attributes: true, attributeFilter: ["class"] })
+    }
 
     return () => {
       if (htmlObserver) htmlObserver.disconnect()
       if (bodyObserver) bodyObserver.disconnect()
+      if (rootObserver) rootObserver.disconnect()
       if (!snapshot.appliedByThisView) return
-      if (snapshot.hadDarkClass) {
-        html.classList.add("dark")
-        if (body) body.classList.add("dark")
-      } else {
-        html.classList.remove("dark")
-        if (body) body.classList.remove("dark")
-      }
-      snapshot.captured = false
+      applyPersistedTheme()
       snapshot.appliedByThisView = false
     }
-  }, [view])
+  }, [viewType])
 
   // Check if already logged in on mount - if at login page, redirect to services
   useEffect(() => {
@@ -358,7 +353,12 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
   ]
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] dark:bg-[#0a0a0a] flex flex-col pt-0 overflow-hidden font-sans">
+    <div
+      className={cn(
+        "min-h-screen flex flex-col pt-0 overflow-hidden font-sans",
+        viewType === "selector" ? "bg-[#FDFDFD]" : "bg-[#FDFDFD] dark:bg-[#0a0a0a]"
+      )}
+    >
       {/* Dynamic Header */}
       <motion.div
         layout
@@ -404,7 +404,7 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
 
       <div className="flex-1 max-w-[1000px] mx-auto w-full px-6 py-4 flex flex-col justify-start -mt-10 relative z-20">
         <AnimatePresence mode="wait">
-          {view === "auth" ? (
+          {viewType === "auth" ? (
             <motion.div
               key="auth-view"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -562,39 +562,40 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="w-full max-w-5xl mx-auto px-4 sm:px-6"
+              className="w-full max-w-5xl mx-auto px-4 sm:px-6 pb-6"
             >
-              {/* Premium Heading Section */}
-              <div className="text-center mb-16 relative">
+              <div className="relative overflow-hidden rounded-[2.25rem] border border-[#0A1121]/5 bg-gradient-to-br from-white via-[#fbfdf8] to-[#fff8f1] px-4 py-8 sm:px-8 sm:py-10 mb-6">
+                <div className="absolute -top-16 -left-14 h-44 w-44 rounded-full bg-[#89C741]/15 blur-3xl" />
+                <div className="absolute -bottom-24 -right-14 h-52 w-52 rounded-full bg-[#F38F24]/12 blur-3xl" />
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.1 }}
-                  className="inline-block px-4 py-1.5 mb-6 rounded-full bg-[#89C741]/10 border border-[#89C741]/20 text-[#89C741] text-[10px] font-black uppercase tracking-[0.3em]"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 mb-4 rounded-full bg-[#89C741]/10 border border-[#89C741]/20 text-[#5c8b24] text-[10px] font-black uppercase tracking-[0.2em] relative z-10"
                 >
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#89C741]" />
                   Experience the Future
                 </motion.div>
                 <motion.h2 
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="text-4xl md:text-7xl font-black text-gray-900 dark:text-white mb-6 tracking-tight leading-[1.1]"
+                  className="relative z-10 text-[2rem] sm:text-5xl md:text-6xl font-black text-gray-900 mb-3 tracking-tight leading-[1.05]"
                 >
-                  Our <span className="text-[#89C741]">Ecosystem</span> <br />
-                  at your fingertips
+                  Pick Your <span className="text-[#89C741]">Eqosy</span> <span className="text-[#F38F24]">Service</span>
                 </motion.h2>
                 <motion.p 
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  className="text-gray-500 dark:text-gray-400 font-medium text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
+                  className="relative z-10 text-gray-600 font-semibold text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed"
                 >
-                  Choose a service to get started. We've unified everything to make your life simpler and faster.
+                  Choose one module to continue. Everything is unified for faster access.
                 </motion.p>
               </div>
 
               {/* Sophisticated Service Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+              <div className="grid grid-cols-2 gap-3 sm:gap-6">
                 {selectionOptions.map((opt, idx) => {
                   const Icon = opt.icon
                   return (
@@ -608,45 +609,45 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
                     >
                       {/* Glow Effect on Hover */}
                       <div className={cn(
-                        "absolute -inset-4 rounded-[4rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-2xl",
+                        "absolute -inset-2 sm:-inset-4 rounded-[2rem] sm:rounded-[4rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-2xl",
                         opt.id === 'food' ? "bg-[#89C741]/10" : "bg-[#F38F24]/10"
                       )} />
                       
-                      <div className="relative h-full bg-white dark:bg-[#121212] rounded-[3.5rem] p-10 md:p-14 border border-gray-100 dark:border-white/5 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.08)] hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.12)] transition-all duration-700 hover:-translate-y-4 overflow-hidden cursor-pointer">
+                      <div className="relative h-full min-h-[250px] sm:min-h-[320px] bg-white/95 backdrop-blur rounded-[2rem] sm:rounded-[2.6rem] p-4 sm:p-7 border border-gray-100 shadow-[0_18px_40px_-25px_rgba(10,17,33,0.35)] hover:shadow-[0_24px_48px_-22px_rgba(10,17,33,0.35)] transition-all duration-500 hover:-translate-y-2 overflow-hidden cursor-pointer">
                         
                         {/* Background Decorative Element */}
                         <div className={cn(
-                          "absolute top-0 right-0 w-64 h-64 -mr-20 -mt-20 rounded-full opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-700",
+                          "absolute top-0 right-0 w-36 h-36 sm:w-52 sm:h-52 -mr-12 -mt-12 rounded-full opacity-[0.06] group-hover:opacity-[0.12] transition-opacity duration-700",
                           opt.color
                         )} />
 
                         <div className="flex flex-col h-full relative z-10">
                           <div className={cn(
-                            "w-24 h-24 rounded-[2rem] flex items-center justify-center mb-10 shadow-2xl transition-all duration-700 group-hover:scale-110 group-hover:rotate-[10deg] group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.2)]",
+                            "w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-[1.6rem] flex items-center justify-center mb-5 sm:mb-7 shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-[8deg]",
                             opt.color
                           )}>
-                            <Icon className="w-11 h-11 text-white" />
+                            <Icon className="w-7 h-7 sm:w-9 sm:h-9 text-white" />
                           </div>
 
-                          <div className="space-y-4 mb-10 flex-1">
-                            <h3 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight group-hover:text-[#89C741] transition-colors duration-300">
+                          <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8 flex-1">
+                            <h3 className="text-[1.95rem] sm:text-4xl font-black text-gray-900 tracking-tight leading-none group-hover:text-[#89C741] transition-colors duration-300">
                               {opt.name}
                             </h3>
-                            <p className="text-gray-500 dark:text-gray-400 font-medium text-lg leading-relaxed">
+                            <p className="text-gray-500 font-semibold text-xs sm:text-base leading-relaxed">
                               {opt.description}
                             </p>
                           </div>
 
-                          <div className="inline-flex items-center gap-4 text-[#89C741] font-black uppercase tracking-[0.2em] text-xs transition-all duration-300 group-hover:gap-6">
-                            <span>Open Module</span>
-                            <div className="w-10 h-[2px] bg-[#89C741]/20 relative overflow-hidden">
+                          <div className="inline-flex items-center gap-2 sm:gap-4 text-[#6da62f] font-black uppercase tracking-[0.15em] text-[10px] sm:text-xs transition-all duration-300 group-hover:gap-5">
+                            <span>Open</span>
+                            <div className="w-6 sm:w-10 h-[2px] bg-[#89C741]/20 relative overflow-hidden">
                               <motion.div 
                                 animate={{ x: ["-100%", "100%"] }}
                                 transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
                                 className="absolute inset-0 bg-[#89C741]"
                               />
                             </div>
-                            <ArrowRight className="w-6 h-6" />
+                            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
                           </div>
                         </div>
 

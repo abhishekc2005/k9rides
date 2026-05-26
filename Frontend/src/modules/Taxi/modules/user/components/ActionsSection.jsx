@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
 const ActionCard = ({ title, description, image, surfaceClass, titleClass, buttonClass, buttonText, path }) => {
@@ -52,6 +52,10 @@ const ActionCard = ({ title, description, image, surfaceClass, titleClass, butto
 };
 
 const ActionsSection = () => {
+  const location = useLocation();
+  const routePrefix = location.pathname.startsWith('/taxi/user') ? '/taxi/user' : '';
+  const resolvePath = (path) => `${routePrefix}${path}`;
+
   return (
     <div className="px-5">
       <div className="mb-3 ml-1">
@@ -67,7 +71,7 @@ const ActionsSection = () => {
           titleClass="text-slate-900"
           buttonClass="bg-orange-500"
           buttonText="Book Now"
-          path="/ride/select-location"
+          path={resolvePath('/ride/select-location')}
         />
 
         <ActionCard
@@ -78,7 +82,7 @@ const ActionsSection = () => {
           titleClass="text-slate-900"
           buttonClass="bg-indigo-500"
           buttonText="Send Now"
-          path="/parcel/type"
+          path={resolvePath('/parcel/type')}
         />
       </div>
     </div>

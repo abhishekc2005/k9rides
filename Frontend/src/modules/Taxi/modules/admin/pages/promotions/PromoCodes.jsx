@@ -22,8 +22,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 const BASE = globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin/promos';
-const LIST_PATH = '/admin/promotions/promo-codes';
-const CREATE_PATH = '/admin/promotions/promo-codes/create';
+const LIST_PATH = '/taxi/admin/promotions/promo-codes';
+const CREATE_PATH = '/taxi/admin/promotions/promo-codes/create';
 const Motion = motion;
 const PROMO_TRANSPORT_OPTIONS = [
   { value: 'all', label: 'All Modules' },
