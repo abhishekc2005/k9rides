@@ -294,31 +294,19 @@ export const listOwnerTokens = async ({ ownerType, ownerId, platform }) => {
 
 export const upsertFirebaseDeviceToken = async ({ ownerType, ownerId, token, platform = 'web' }) => {
     const normalizedToken = sanitizeString(token);
-    console.log(`[FCM-DEBUG] upsertFirebaseDeviceToken: ownerType=${ownerType}, ownerId=${ownerId}, platform=${platform}, tokenPreview=${normalizedToken?.slice(0, 10)}...`);
     
     if (!ownerType || !ownerId || !normalizedToken) {
-        console.error('[FCM-DEBUG] upsert - Missing required fields');
         throw new Error('ownerType, ownerId, and token are required.');
     }
 
     const normalizedPlatform = platform === 'mobile' ? 'mobile' : 'web';
     const model = getOwnerModel(ownerType);
     if (!model) {
-        console.error(`[FCM-DEBUG] upsert - Unsupported owner type: ${ownerType}`);
         throw new Error(`Unsupported owner type: ${ownerType}`);
     }
 
-    const resolvedDbName = String(model?.db?.name || 'unknown_db');
-    const resolvedCollectionName = String(model?.collection?.name || 'unknown_collection');
-    console.log(
-        `[FCM-DEBUG] upsert - Lookup context: ownerType=${ownerType}, ownerId=${ownerId}, model=${model.modelName}, db=${resolvedDbName}, collection=${resolvedCollectionName}`
-    );
-
     const doc = await model.findById(ownerId);
     if (!doc) {
-        console.error(
-            `[FCM-DEBUG] upsert - Owner profile not found for id ${ownerId} in model=${model.modelName} db=${resolvedDbName} collection=${resolvedCollectionName}`
-        );
         throw new AuthError('Session is stale or invalid for this account. Please login again.');
     }
 
@@ -327,13 +315,11 @@ export const upsertFirebaseDeviceToken = async ({ ownerType, ownerId, token, pla
         throw new Error(`Unsupported owner type: ${ownerType}`);
     }
     const existingTokens = readTokenFieldAsList(doc, field);
-    console.log(`[FCM-DEBUG] upsert - Current tokens in DB count: ${existingTokens.length}`);
     
     const tokens = normalizeTokenList([...existingTokens, normalizedToken]);
     writeTokenFieldFromList(doc, field, tokens);
     
     await doc.save();
-    console.log(`[FCM-DEBUG] upsert - Token list updated. New count: ${tokens.length}`);
     return { success: true };
 };
 

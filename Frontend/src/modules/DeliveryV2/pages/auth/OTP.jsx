@@ -142,10 +142,13 @@ export default function DeliveryOTP() {
             for (const n of hN) {
               try {
                 const t = await window.flutter_inappwebview.callHandler(n, { module: "delivery" });
-                if (t?.length > 20) { fcmToken = t.trim(); break; }
+                const normalized = typeof t === "string" ? t.trim() : String(t?.token || t?.fcmToken || "").trim();
+                if (normalized.length > 20) { fcmToken = normalized; break; }
               } catch (e) {}
             }
-          } else { fcmToken = localStorage.getItem("fcm_web_registered_token_delivery") || null; }
+          } else {
+            fcmToken = localStorage.getItem("fcm_web_registered_token_delivery") || null;
+          }
         }
       } catch (e) {}
       setDeviceToken(fcmToken);

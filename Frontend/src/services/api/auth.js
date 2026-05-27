@@ -68,9 +68,14 @@ export function saveLoginFcmToken(token, platform = "web") {
   const normalizedPlatform = platform === "mobile" ? "mobile" : "web";
   const route =
     normalizedPlatform === "mobile" ? AUTH.FCM_SAVE_MOBILE : AUTH.FCM_SAVE_WEB;
+  if (normalizedPlatform === "mobile") {
+    return apiClient.post(route, {
+      token: normalizedToken,
+    });
+  }
   return apiClient.post(route, {
     token: normalizedToken,
-    platform: normalizedPlatform,
+    platform: "web",
   });
 }
 

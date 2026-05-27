@@ -175,6 +175,34 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
     }
   }
 
+  const waitForFlutterBridge = async (timeoutMs = 6000) => {
+    if (typeof window === "undefined") return false
+    if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === "function") {
+      return true
+    }
+
+    const startedAt = Date.now()
+    while (Date.now() - startedAt < timeoutMs) {
+      await new Promise((resolve) => setTimeout(resolve, 120))
+      if (window.flutter_inappwebview && typeof window.flutter_inappwebview.callHandler === "function") {
+        return true
+      }
+    }
+    return false
+  }
+
+  const normalizeBridgeToken = (value) => {
+    if (typeof value === "string") return value.trim()
+    if (value && typeof value === "object") {
+      const candidates = [value.token, value.fcmToken, value.data?.token, value.data?.fcmToken]
+      for (const candidate of candidates) {
+        const normalized = String(candidate || "").trim()
+        if (normalized.length > 20) return normalized
+      }
+    }
+    return String(value || "").trim()
+  }
+
   const handleSendOTP = async (e) => {
     e.preventDefault()
     const phone = normalizedPhone()
@@ -251,11 +279,12 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
       let platform = "web"
       if (typeof window !== "undefined" && window.flutter_inappwebview) {
         platform = "mobile"
+        await waitForFlutterBridge()
         const handlerNames = ["getFcmToken", "getFCMToken", "getPushToken", "getFirebaseToken"]
         for (const handlerName of handlerNames) {
           try {
             const t = await window.flutter_inappwebview.callHandler(handlerName, { module: "user" })
-            const normalized = String(t || "").trim()
+            const normalized = normalizeBridgeToken(t)
             if (normalized.length > 20) {
               fcmToken = normalized
               break

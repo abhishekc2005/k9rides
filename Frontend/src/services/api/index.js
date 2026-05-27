@@ -1136,9 +1136,13 @@ export const restaurantAPI = {
     if (!token) return Promise.reject(new Error("FCM token is required"));
     const path =
       platform === "mobile" ? "/fcm-tokens/mobile/save" : "/fcm-tokens/save";
+    const payload =
+      platform === "mobile"
+        ? { token: String(token) }
+        : { token: String(token), platform };
     return apiClient.post(
       path,
-      { token: String(token), platform },
+      payload,
       { contextModule: "restaurant" },
     );
   },
@@ -1716,9 +1720,13 @@ export const deliveryAPI = {
     if (!token) return Promise.reject(new Error("FCM token is required"));
     const path =
       platform === "mobile" ? "/fcm-tokens/mobile/save" : "/fcm-tokens/save";
+    const payload =
+      platform === "mobile"
+        ? { token: String(token) }
+        : { token: String(token), platform };
     return apiClient.post(
       path,
-      { token: String(token), platform },
+      payload,
       { contextModule: "delivery" },
     );
   },
@@ -2185,9 +2193,13 @@ export const userAPI = {
     const platform = options?.platform === "mobile" ? "mobile" : "web";
     const path =
       platform === "mobile" ? "/fcm-tokens/mobile/save" : "/fcm-tokens/save";
+    const payload =
+      platform === "mobile"
+        ? { token: String(token) }
+        : { token: String(token), platform };
     return apiClient.post(
       path,
-      { token: String(token), platform },
+      payload,
       { contextModule: "user" },
     );
   },
