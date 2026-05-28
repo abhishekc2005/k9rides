@@ -180,7 +180,22 @@ const Profile = () => {
     clearCurrentRide();
     socketService.disconnect();
     clearLocalUserSession();
-    navigate('/taxi/user/login', { replace: true });
+
+    // Normalize theme classes before route switch so /login does not momentarily
+    // inherit stale dark-mode DOM classes from the previous screen.
+    if (typeof document !== 'undefined') {
+      const savedTheme = localStorage.getItem('appTheme') || 'light';
+      const html = document.documentElement;
+      const body = document.body;
+      const root = document.getElementById('root');
+      const shouldUseDark = savedTheme === 'dark';
+
+      html.classList.toggle('dark', shouldUseDark);
+      if (body) body.classList.toggle('dark', shouldUseDark);
+      if (root) root.classList.toggle('dark', shouldUseDark);
+    }
+
+    navigate('/login', { replace: true });
   };
 
   const initials = (profile.name || 'User')

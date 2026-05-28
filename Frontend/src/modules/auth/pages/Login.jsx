@@ -96,14 +96,16 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
       if (savedTheme === "dark") {
         html.classList.add("dark")
         if (body) body.classList.add("dark")
+        if (root) root.classList.add("dark")
       } else {
         html.classList.remove("dark")
         if (body) body.classList.remove("dark")
+        if (root) root.classList.remove("dark")
       }
     }
 
     if (viewType !== "selector") {
-      if (snapshot.appliedByThisView) applyPersistedTheme()
+      applyPersistedTheme()
       snapshot.appliedByThisView = false
       return
     }

@@ -261,7 +261,6 @@ const VehicleType = ({ mode: propMode }) => {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [vehiclePreferences, setVehiclePreferences] = useState([]);
   const [pagination, setPagination] = useState({ total: 0, current_page: 1 });
   const [errorMessage, setErrorMessage] = useState('');
   const [formData, setFormData] = useState({ ...defaultFormData, transport_type: '' });
@@ -294,9 +293,8 @@ const VehicleType = ({ mode: propMode }) => {
       setErrorMessage('');
 
       try {
-        const [vehicleResponse, preferenceResponse] = await Promise.all([
+        const [vehicleResponse] = await Promise.all([
           api.get('/admin/types/vehicle-types'),
-          api.get('/admin/vehicle_preference'),
         ]);
 
         if (!mounted) {
@@ -312,16 +310,6 @@ const VehicleType = ({ mode: propMode }) => {
         const normalizedVehicles = vehicleResults.map(normalizeVehicle);
         setVehicles(normalizedVehicles);
         setPagination(vehiclePayload?.paginator || { total: normalizedVehicles.length, current_page: 1 });
-
-        const prefPayload = unwrap(preferenceResponse);
-        const prefResults = Array.isArray(prefPayload?.results)
-          ? prefPayload.results
-          : Array.isArray(prefPayload?.data)
-            ? prefPayload.data
-          : Array.isArray(prefPayload)
-            ? prefPayload
-            : [];
-        setVehiclePreferences(prefResults);
 
         if (id) {
           const selectedVehicle = normalizedVehicles.find((item) => String(item.id) === String(id));
@@ -391,11 +379,6 @@ const VehicleType = ({ mode: propMode }) => {
   const availableSupportVehicles = useMemo(
     () => vehicles.filter((item) => String(item.id) !== String(id)),
     [id, vehicles],
-  );
-
-  const preferenceOptions = useMemo(
-    () => vehiclePreferences.map((item) => ({ ...item, id: String(item._id || item.id) })),
-    [vehiclePreferences],
   );
 
   const showsDeliveryCategorySelector = useMemo(
@@ -1013,15 +996,6 @@ const VehicleType = ({ mode: propMode }) => {
             />
           </div>
 
-          <div className="lg:col-span-2">
-            <VehicleMultiSelect
-              label="Vehicle Preferences"
-              options={preferenceOptions}
-              value={formData.vehicle_preference}
-              onChange={(next) => updateForm('vehicle_preference', next)}
-              placeholder="No preferences selected"
-            />
-          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 border-t border-slate-100 bg-slate-50/50 p-6 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -1029,7 +1003,7 @@ const VehicleType = ({ mode: propMode }) => {
             <div className="flex items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3">
               <Info size={16} className="mt-0.5 shrink-0 text-amber-600" />
               <p className="text-sm text-amber-800">
-                This form is fully dynamic from your DB. Transport type, icon type, supported vehicles, and preferences all save to the real vehicle catalog.
+                This form is fully dynamic from your DB. Transport type, icon type, and supported vehicles all save to the real vehicle catalog.
               </p>
             </div>
             <label className="flex items-center gap-3 text-sm font-medium text-slate-700">

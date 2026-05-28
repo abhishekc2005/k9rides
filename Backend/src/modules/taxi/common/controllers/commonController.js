@@ -1,5 +1,5 @@
 import { asyncHandler } from '../../../../utils/asyncHandler.js';
-import { uploadDataUrlToCloudinary } from '../../../../utils/cloudinaryUpload.js';
+import { uploadDataUrlToCloudinary, uploadBufferToCloudinary } from '../../../../utils/cloudinaryUpload.js';
 import { env } from '../../../../config/env.js';
 import { getReferralSettings, getReferralTranslationContent } from '../../admin/services/adminService.js';
 import { getPublicActivePaymentGateway } from '../../services/paymentGatewayService.js';
@@ -8,17 +8,25 @@ import { getPublicActivePaymentGateway } from '../../services/paymentGatewayServ
  * Common controller for shared utilities like file uploads
  */
 export const uploadImage = asyncHandler(async (req, res) => {
-    const { image, folder = 'general' } = req.body;
-    
-    if (!image) {
-        return res.status(400).json({ success: false, message: 'Image data is required' });
-    }
+    const folder = String(req.body?.folder || 'general').trim() || 'general';
+    const scopedFolder = `${env.cloudinary.folder}/${folder}`;
+    const publicIdPrefix = `content-${folder}`;
 
-    const uploadResult = await uploadDataUrlToCloudinary({
-        dataUrl: image,
-        folder: `${env.cloudinary.folder}/${folder}`,
-        publicIdPrefix: `content-${folder}`
-    });
+    const uploadResult = req.file
+        ? await uploadBufferToCloudinary({
+            buffer: req.file.buffer,
+            mimeType: req.file.mimetype || 'image/jpeg',
+            folder: scopedFolder,
+            publicIdPrefix,
+            // Keep original format for faster selfie uploads.
+            format: undefined,
+        })
+        : await uploadDataUrlToCloudinary({
+            dataUrl: req.body?.image,
+            folder: scopedFolder,
+            publicIdPrefix,
+            format: undefined,
+        });
 
     return res.json({
         success: true,

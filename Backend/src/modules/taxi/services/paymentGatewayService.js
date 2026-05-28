@@ -1,5 +1,6 @@
 import { ApiError } from '../../../utils/ApiError.js';
 import { ensureThirdPartySettings } from '../admin/services/adminService.js';
+import { env } from '../../../config/env.js';
 
 const PAYMENT_GATEWAY_SPECS = {
   razor_pay: {
@@ -33,6 +34,7 @@ const PAYMENT_GATEWAY_SPECS = {
 
 const normalizeString = (value = '') => String(value || '').trim();
 const normalizeEnabled = (value) => (String(value ?? '0').trim() === '1' ? '1' : '0');
+const isDemoLikeValue = (value = '') => normalizeString(value).toLowerCase().includes('demo');
 
 const normalizeGatewayConfig = (gatewayKey, gatewayValue = {}) => {
   const current = gatewayValue && typeof gatewayValue === 'object' ? gatewayValue : {};
@@ -165,10 +167,25 @@ export const resolveConfiguredGatewayCredentials = async (gatewayKey) => {
   const validatedGateway = validateGatewayConfiguration(gatewayKey, gateway);
 
   if (gatewayKey === 'razor_pay') {
-    const keyId = normalizeString(isLive ? validatedGateway.live_api_key : validatedGateway.test_api_key);
-    const keySecret = normalizeString(isLive ? validatedGateway.live_secret_key : validatedGateway.test_secret_key);
+    let keyId = normalizeString(isLive ? validatedGateway.live_api_key : validatedGateway.test_api_key);
+    let keySecret = normalizeString(isLive ? validatedGateway.live_secret_key : validatedGateway.test_secret_key);
 
-    if (keyId.toLowerCase().includes('demo') || keySecret.toLowerCase().includes('demo')) {
+    const hasInvalidConfiguredKeys =
+      !keyId ||
+      !keySecret ||
+      isDemoLikeValue(keyId) ||
+      isDemoLikeValue(keySecret);
+
+    if (hasInvalidConfiguredKeys) {
+      const envKeyId = normalizeString(env.razorpayKeyId);
+      const envKeySecret = normalizeString(env.razorpayKeySecret);
+      if (envKeyId && envKeySecret) {
+        keyId = envKeyId;
+        keySecret = envKeySecret;
+      }
+    }
+
+    if (!keyId || !keySecret || isDemoLikeValue(keyId) || isDemoLikeValue(keySecret)) {
       throw new ApiError(500, 'Razorpay keys are demo placeholders. Configure real keys in Admin > Payment Gateways');
     }
 

@@ -18,5 +18,27 @@ export const uploadService = {
       console.error('Upload Service Error:', error);
       throw error;
     }
+  },
+  /**
+   * Upload an image file/blob via multipart form data
+   * @param {File|Blob} file - Image file or blob
+   * @param {string} folder - Destination folder on Cloudinary
+   */
+  uploadImageFile: async (file, folder = 'general') => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file, file?.name || 'upload.jpg');
+      formData.append('folder', folder);
+
+      const response = await api.post('/common/upload/image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response?.data || response;
+    } catch (error) {
+      console.error('Upload Service Error:', error);
+      throw error;
+    }
   }
 };

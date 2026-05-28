@@ -44,11 +44,15 @@ function resolveNativeInitialRoute() {
   const pathname = rawPathname.replace(/\/index\.html$/i, '') || '/'
   const storedRoute = String(localStorage.getItem(NATIVE_LAST_ROUTE_KEY) || '').trim()
 
+  if (pathname.startsWith('/taxi/')) return pathname
   if (pathname.startsWith('/food/')) return pathname
   if (pathname.startsWith('/restaurant')) return `/food${pathname}`
   if (pathname.startsWith('/delivery')) return `/food${pathname}`
   if (pathname.startsWith('/user')) return `/food${pathname}`
   if (pathname.startsWith('/admin')) return pathname
+  if (storedRoute.startsWith('/taxi/')) {
+    return storedRoute
+  }
   if (storedRoute.startsWith('/food/') || storedRoute.startsWith('/admin')) {
     return storedRoute
   }
@@ -65,10 +69,31 @@ function bootstrapNativeHashRoute() {
   if (!isNativeLikeShell() || typeof window === 'undefined') return
 
   const currentHash = String(window.location?.hash || '')
-  if (currentHash.startsWith('#/')) return
-
+  const hashPath = currentHash.startsWith('#') ? currentHash.slice(1).split('?')[0] : ''
+  const rawPathname = String(window.location?.pathname || '')
+  const pathname = rawPathname.replace(/\/index\.html$/i, '') || '/'
   const targetPath = resolveNativeInitialRoute()
   const search = String(window.location?.search || '')
+
+  if (currentHash.startsWith('#/')) {
+    const nativePathPrefix = targetPath.startsWith('/taxi/')
+      ? '/taxi/'
+      : targetPath.startsWith('/food/')
+        ? '/food/'
+        : targetPath.startsWith('/admin')
+          ? '/admin'
+          : ''
+
+    const hashMatchesPrefix = nativePathPrefix ? hashPath.startsWith(nativePathPrefix) : false;
+    const pathSuggestsTaxi = pathname.startsWith('/taxi/');
+
+    // Normalize stale hash routes in native shells (e.g. /taxi/... with #/food/...)
+    if ((pathSuggestsTaxi && !hashPath.startsWith('/taxi/')) || !hashMatchesPrefix) {
+      window.history.replaceState(null, '', `#${targetPath}${search}`)
+    }
+    return
+  }
+
   window.history.replaceState(null, '', `#${targetPath}${search}`)
 }
 

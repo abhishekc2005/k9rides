@@ -137,6 +137,11 @@ const loadImageFromDataUrl = (dataUrl) =>
         image.src = dataUrl;
     });
 
+const dataUrlToBlob = async (dataUrl) => {
+    const response = await fetch(dataUrl);
+    return response.blob();
+};
+
 const compressSelfieForUpload = async (file) => {
     const originalDataUrl = await readFileAsDataUrl(file);
 
@@ -145,7 +150,7 @@ const compressSelfieForUpload = async (file) => {
     }
 
     const image = await loadImageFromDataUrl(originalDataUrl);
-    const maxSide = 1280;
+    const maxSide = 960;
     const largestSide = Math.max(image.width, image.height, 1);
     const scale = largestSide > maxSide ? maxSide / largestSide : 1;
     const width = Math.max(1, Math.round(image.width * scale));
@@ -175,7 +180,7 @@ const compressSelfieForUpload = async (file) => {
 
 const compressSelfieDataUrl = async (dataUrl) => {
     const image = await loadImageFromDataUrl(dataUrl);
-    const maxSide = 1280;
+    const maxSide = 960;
     const largestSide = Math.max(image.width, image.height, 1);
     const scale = largestSide > maxSide ? maxSide / largestSide : 1;
     const width = Math.max(1, Math.round(image.width * scale));
@@ -1318,10 +1323,14 @@ const DriverHome = () => {
 
         try {
             setStatusMessage('Processing selfie...');
-            const base64Image = await compressSelfieDataUrl(sourceDataUrl);
+            const compressedDataUrl = await compressSelfieDataUrl(sourceDataUrl);
+            const imageBlob = await dataUrlToBlob(compressedDataUrl);
+            const imageFile = new File([imageBlob], `selfie-${Date.now()}.jpg`, {
+                type: imageBlob.type || 'image/jpeg',
+            });
 
             setStatusMessage('Uploading selfie...');
-            const uploadResult = await uploadService.uploadImage(base64Image, 'driver-online-selfies');
+            const uploadResult = await uploadService.uploadImageFile(imageFile, 'driver-online-selfies');
             const selfieUrl = uploadResult?.url || uploadResult?.secureUrl || '';
 
             if (!selfieUrl) {

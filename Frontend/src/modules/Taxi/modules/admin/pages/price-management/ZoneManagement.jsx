@@ -297,7 +297,7 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
         : await adminService.createZone(payload);
       if (res.success) {
         resetForm();
-        navigate("/admin/pricing/zone");
+        navigate("/taxi/admin/pricing/zone");
         fetchData();
       } else {
         alert(res.message || "Operation failed");
@@ -578,7 +578,7 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
               <div className="flex items-center justify-between">
                 <h1 className="text-xl font-semibold text-gray-900">{editingId ? 'Edit Market Zone' : 'Add Market Zone'}</h1>
                 <button 
-                  onClick={() => navigate("/admin/pricing/zone")}
+                  onClick={() => navigate("/taxi/admin/pricing/zone")}
                   className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
                 >
                   <ArrowLeft size={14} /> Back
@@ -701,7 +701,7 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
                      {editingId ? 'Update Zone' : 'Save'}
                    </button>
                    <button 
-                     onClick={() => navigate("/admin/pricing/zone")}
+                     onClick={() => navigate("/taxi/admin/pricing/zone")}
                      className="w-full py-3 bg-gray-50 text-gray-600 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
                    >
                      Cancel
