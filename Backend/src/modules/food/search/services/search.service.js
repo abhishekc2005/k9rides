@@ -183,9 +183,31 @@ export const searchUnified = async (query = {}, options = {}) => {
  * Fetch Admin-only categories
  */
 export const getAdminCategories = async (query = {}) => {
+    const restaurantFilter = { status: 'approved' };
+    if (query.zoneId && mongoose.Types.ObjectId.isValid(query.zoneId)) {
+        restaurantFilter.zoneId = new mongoose.Types.ObjectId(query.zoneId);
+    }
+
+    const eligibleRestaurantIds = await FoodRestaurant.distinct('_id', restaurantFilter);
+    if (!eligibleRestaurantIds.length) {
+        return [];
+    }
+
+    const eligibleCategoryIds = await FoodItem.distinct('categoryId', {
+        approvalStatus: 'approved',
+        isAvailable: { $ne: false },
+        categoryId: { $ne: null },
+        restaurantId: { $in: eligibleRestaurantIds }
+    });
+
+    if (!eligibleCategoryIds.length) {
+        return [];
+    }
+
     const filter = { 
         isActive: true, 
         isApproved: true,
+        _id: { $in: eligibleCategoryIds },
         $or: [
             { restaurantId: { $exists: false } },
             { restaurantId: null },
