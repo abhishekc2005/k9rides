@@ -41,9 +41,46 @@ const CATEGORY_PAGE_FILTERS_STORAGE_KEY = "food-category-page-filters-v1"
 export default function CategoryPage() {
   const { category } = useParams()
   const navigate = useNavigate()
-  const { vegMode } = useProfile()
+  const { vegMode, getDefaultAddress } = useProfile()
   const { location } = useLocation()
-  const { zoneId, isOutOfService } = useZone(location)
+  const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
+    try {
+      return window.localStorage.getItem("deliveryAddressMode") || "saved"
+    } catch {
+      return "saved"
+    }
+  })
+  const defaultSavedAddress = useMemo(
+    () => getDefaultAddress?.() || null,
+    [getDefaultAddress],
+  )
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = Number(coords[0])
+      const lat = Number(coords[1])
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng }
+      }
+    }
+
+    const lat = Number(defaultSavedAddress?.latitude || defaultSavedAddress?.lat)
+    const lng = Number(defaultSavedAddress?.longitude || defaultSavedAddress?.lng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng }
+    }
+
+    return null
+  }, [defaultSavedAddress])
+  const effectiveLocation = useMemo(() => {
+    const useSavedAddress =
+      deliveryAddressMode === "saved" &&
+      Number.isFinite(defaultSavedAddressLocation?.latitude) &&
+      Number.isFinite(defaultSavedAddressLocation?.longitude)
+
+    return useSavedAddress ? defaultSavedAddressLocation : location
+  }, [deliveryAddressMode, defaultSavedAddressLocation, location])
+  const { zoneId, isOutOfService } = useZone(effectiveLocation)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState(category?.toLowerCase() || 'all')
   const [activeFilters, setActiveFilters] = useState(new Set())
@@ -60,6 +97,21 @@ export default function CategoryPage() {
   const approvedFoodsCacheRef = useRef(null)
   const approvedFoodsInFlightRef = useRef(null)
   const hasRestoredCategoryFiltersRef = useRef(false)
+
+  useEffect(() => {
+    const readMode = () => {
+      try {
+        setDeliveryAddressMode(window.localStorage.getItem("deliveryAddressMode") || "saved")
+      } catch {
+        setDeliveryAddressMode("saved")
+      }
+    }
+
+    window.addEventListener("deliveryAddressModeChanged", readMode)
+    return () => {
+      window.removeEventListener("deliveryAddressModeChanged", readMode)
+    }
+  }, [])
 
   // State for categories from admin
   const [categories, setCategories] = useState([])
@@ -293,6 +345,10 @@ export default function CategoryPage() {
           restaurantsByName.get(restaurantName.toLowerCase()) ||
           null
 
+        if (!matchedRestaurant) {
+          return null
+        }
+
         const fallbackRestaurantName = restaurantName || "Restaurant"
         const fallbackSlug = slugify(fallbackRestaurantName)
         const fallbackImage = normalizeImageUrl(food?.image)
@@ -324,6 +380,7 @@ export default function CategoryPage() {
           categoryDishFoodType: food?.foodType || "Non-Veg",
         }
       })
+      .filter(Boolean)
   }
 
   const normalizeImageUrl = (value) => {
@@ -804,9 +861,7 @@ export default function CategoryPage() {
     const fetchRestaurants = async () => {
       try {
         setLoadingRestaurants(true)
-        // IMPORTANT: Do NOT pass zoneId as a hard filter.
-        // UX is "show all restaurants", and we only style out-of-service state.
-        const params = {}
+        const params = zoneId ? { zoneId } : {}
         const response = await restaurantAPI.getRestaurants(params)
 
         if (response.data && response.data.success && response.data.data && response.data.data.restaurants) {
@@ -2059,4 +2114,3 @@ export default function CategoryPage() {
     </div>
   )
 }
-

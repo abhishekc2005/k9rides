@@ -8,6 +8,7 @@ import {
 import { Card, CardContent } from "@food/components/ui/card"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
+import { useProfile } from "@food/context/ProfileContext"
 import { useLocation as useGeoLocation } from "@food/hooks/useLocation"
 import { useZone } from "@food/hooks/useZone"
 import { searchAPI } from "@/services/api"
@@ -41,8 +42,52 @@ export default function ProfessionalSearch() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialQuery = searchParams.get("q") || ""
   const navigate = useNavigate()
+  const { getDefaultAddress } = useProfile()
   const { location: userCoords } = useGeoLocation()
-  const { zoneId } = useZone(userCoords)
+  const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
+    try {
+      return window.localStorage.getItem("deliveryAddressMode") || "saved"
+    } catch {
+      return "saved"
+    }
+  })
+  const defaultSavedAddress = useMemo(
+    () => getDefaultAddress?.() || null,
+    [getDefaultAddress],
+  )
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = Number(coords[0])
+      const lat = Number(coords[1])
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng }
+      }
+    }
+
+    const lat = Number(defaultSavedAddress?.latitude || defaultSavedAddress?.lat)
+    const lng = Number(defaultSavedAddress?.longitude || defaultSavedAddress?.lng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng }
+    }
+
+    return null
+  }, [defaultSavedAddress])
+  const effectiveLocation = useMemo(() => {
+    const useSavedAddress =
+      deliveryAddressMode === "saved" &&
+      Number.isFinite(defaultSavedAddressLocation?.latitude) &&
+      Number.isFinite(defaultSavedAddressLocation?.longitude)
+
+    return useSavedAddress ? defaultSavedAddressLocation : userCoords
+  }, [deliveryAddressMode, defaultSavedAddressLocation, userCoords])
+  const { zoneId, zoneStatus, loading: zoneLoading } = useZone(effectiveLocation)
+  const hasEffectiveCoordinates = useMemo(
+    () =>
+      Number.isFinite(effectiveLocation?.latitude) &&
+      Number.isFinite(effectiveLocation?.longitude),
+    [effectiveLocation],
+  )
   
   const [query, setQuery] = useState(initialQuery)
   const debouncedQuery = useDebounce(query, 500)
@@ -58,10 +103,37 @@ export default function ProfessionalSearch() {
   useEffect(() => {
     const savedHistory = localStorage.getItem(SEARCH_HISTORY_KEY)
     if (savedHistory) setHistory(JSON.parse(savedHistory))
+  }, [])
+
+  useEffect(() => {
     fetchCategories()
+  }, [zoneId, zoneStatus, zoneLoading, hasEffectiveCoordinates])
+
+  useEffect(() => {
+    const readMode = () => {
+      try {
+        setDeliveryAddressMode(window.localStorage.getItem("deliveryAddressMode") || "saved")
+      } catch {
+        setDeliveryAddressMode("saved")
+      }
+    }
+
+    window.addEventListener("deliveryAddressModeChanged", readMode)
+    return () => {
+      window.removeEventListener("deliveryAddressModeChanged", readMode)
+    }
   }, [])
 
   const fetchCategories = async () => {
+    if (hasEffectiveCoordinates && (zoneLoading || zoneStatus === "loading")) {
+      return
+    }
+
+    if (hasEffectiveCoordinates && !zoneId) {
+      setCategories([])
+      return
+    }
+
     try {
       const res = await searchAPI.getAdminCategories({ zoneId })
       if (res.data?.success) setCategories(res.data.data.categories)
@@ -77,6 +149,10 @@ export default function ProfessionalSearch() {
   }
 
   const performSearch = useCallback(async (searchTerm, catId) => {
+    if (hasEffectiveCoordinates && (zoneLoading || zoneStatus === "loading")) {
+      return
+    }
+
     if (!searchTerm && !catId) {
       setResults({ restaurants: [], dishes: [] })
       return
@@ -87,8 +163,8 @@ export default function ProfessionalSearch() {
       const res = await searchAPI.unifiedSearch({
         q: searchTerm,
         categoryId: catId,
-        lat: userCoords?.latitude,
-        lng: userCoords?.longitude,
+        lat: effectiveLocation?.latitude,
+        lng: effectiveLocation?.longitude,
         zoneId
       })
       
@@ -105,7 +181,7 @@ export default function ProfessionalSearch() {
     } finally {
       setLoading(false)
     }
-  }, [userCoords, zoneId])
+  }, [effectiveLocation, zoneId, zoneStatus, zoneLoading, hasEffectiveCoordinates])
 
   useEffect(() => {
     performSearch(debouncedQuery, selectedCategoryId)

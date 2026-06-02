@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { adminAPI } from "@food/api";
 import { foodImages } from "@food/constants/images";
 import OptimizedImage from "@food/components/OptimizedImage";
+import { useProfile } from "@food/context/ProfileContext";
 import { useLocation } from "@food/hooks/useLocation";
 import { useZone } from "@food/hooks/useZone";
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation";
@@ -16,10 +17,92 @@ export default function Categories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const { getDefaultAddress } = useProfile();
   const { location } = useLocation();
-  const { zoneId } = useZone(location);
+  const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
+    try {
+      return window.localStorage.getItem("deliveryAddressMode") || "saved";
+    } catch {
+      return "saved";
+    }
+  });
+  const defaultSavedAddress = useMemo(
+    () => getDefaultAddress?.() || null,
+    [getDefaultAddress],
+  );
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = Number(coords[0]);
+      const lat = Number(coords[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng };
+      }
+    }
+
+    const lat = Number(defaultSavedAddress?.latitude || defaultSavedAddress?.lat);
+    const lng = Number(defaultSavedAddress?.longitude || defaultSavedAddress?.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng };
+    }
+
+    return null;
+  }, [defaultSavedAddress]);
+  const effectiveLocation = useMemo(() => {
+    const useSavedAddress =
+      deliveryAddressMode === "saved" &&
+      Number.isFinite(defaultSavedAddressLocation?.latitude) &&
+      Number.isFinite(defaultSavedAddressLocation?.longitude);
+
+    return useSavedAddress ? defaultSavedAddressLocation : location;
+  }, [deliveryAddressMode, defaultSavedAddressLocation, location]);
+  const { zoneId, zoneStatus, loading: zoneLoading } = useZone(effectiveLocation);
+  const [cachedZoneId, setCachedZoneId] = useState(() => {
+    try {
+      return window.localStorage.getItem("userZoneId") || "";
+    } catch {
+      return "";
+    }
+  });
+  const resolvedZoneId = zoneId || cachedZoneId || "";
 
   const BACKEND_ORIGIN = useMemo(() => API_BASE_URL.replace(/\/api\/?$/, ""), []);
+  const hasEffectiveCoordinates = useMemo(
+    () =>
+      Number.isFinite(effectiveLocation?.latitude) &&
+      Number.isFinite(effectiveLocation?.longitude),
+    [effectiveLocation],
+  );
+
+  useEffect(() => {
+    const readMode = () => {
+      try {
+        setDeliveryAddressMode(window.localStorage.getItem("deliveryAddressMode") || "saved");
+        setCachedZoneId(window.localStorage.getItem("userZoneId") || "");
+      } catch {
+        setDeliveryAddressMode("saved");
+        setCachedZoneId("");
+      }
+    };
+
+    window.addEventListener("deliveryAddressModeChanged", readMode);
+    return () => {
+      window.removeEventListener("deliveryAddressModeChanged", readMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (zoneId) {
+      setCachedZoneId(zoneId);
+      return;
+    }
+
+    try {
+      setCachedZoneId(window.localStorage.getItem("userZoneId") || "");
+    } catch {
+      setCachedZoneId("");
+    }
+  }, [zoneId, deliveryAddressMode, effectiveLocation?.latitude, effectiveLocation?.longitude]);
 
   const normalizeImageUrl = (imageUrl) => {
     if (typeof imageUrl !== "string") return "";
@@ -41,9 +124,21 @@ export default function Categories() {
 
   useEffect(() => {
     const fetchCategories = async () => {
+      if (hasEffectiveCoordinates && (zoneLoading || zoneStatus === "loading") && !resolvedZoneId) {
+        return;
+      }
+
+      if (hasEffectiveCoordinates && !resolvedZoneId) {
+        setCategories([]);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        const response = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {});
+        const response = await adminAPI.getPublicCategories(
+          resolvedZoneId ? { zoneId: resolvedZoneId } : {}
+        );
         const list =
           response?.data?.data?.categories ||
           response?.data?.categories ||
@@ -66,7 +161,7 @@ export default function Categories() {
       }
     };
     fetchCategories();
-  }, [zoneId, BACKEND_ORIGIN]);
+  }, [resolvedZoneId, zoneStatus, zoneLoading, hasEffectiveCoordinates, BACKEND_ORIGIN]);
 
   const filteredCategories = categories.filter((cat) =>
     (cat.name || "").toLowerCase().includes(searchQuery.toLowerCase())
