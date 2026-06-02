@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom"
 import { Phone, Lock, ArrowRight, ShieldCheck, Loader2, UtensilsCrossed, Car, ShoppingBag, Building2 } from "lucide-react"
 import { toast } from "sonner"
-import { authAPI } from "@food/api"
+import apiClient, { authAPI } from "@food/api"
 import { setUnifiedAuthData, isUnifiedAuthenticated } from "@food/utils/auth"
 
 export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
@@ -12,10 +12,12 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
   const FCM_FETCH_TIMEOUT_MS = 12000
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
-  const [step, setStep] = useState(1) // 1: Phone, 2: OTP
+  const [step, setStep] = useState(1) // 1: Phone, 2: OTP, 3: Name
   const [loading, setLoading] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
+  const [name, setName] = useState("")
+  const [pendingAuthData, setPendingAuthData] = useState(null)
   const navigate = useNavigate()
   const submitting = useRef(false)
   const selectorThemeSnapshotRef = useRef({ appliedByThisView: false })
@@ -262,6 +264,8 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
   const handleEditNumber = () => {
     setStep(1)
     setOtp("")
+    setName("")
+    setPendingAuthData(null)
     setResendTimer(0)
   }
 
@@ -322,6 +326,20 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
         throw new Error("Invalid response from server")
       }
 
+      const hasName =
+        data.user?.name &&
+        String(data.user.name).trim().length > 0 &&
+        String(data.user.name).toLowerCase() !== "null"
+      const needsName = data.isNewUser === true || data.needsNamePrompt === true || !hasName
+
+      if (needsName) {
+        setPendingAuthData({ ...data, fcmToken, platform })
+        setName("")
+        setStep(3)
+        toast.success("OTP verified. Complete your profile to continue.")
+        return
+      }
+
       setUnifiedAuthData(data)
       try {
         await authAPI.saveLoginFcmToken(fcmToken, platform)
@@ -341,6 +359,59 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
         }
       }
       console.log("[Auth] OTP verify error:", err?.response?.data || err)
+      toast.error(msg)
+    } finally {
+      setLoading(false)
+      submitting.current = false
+    }
+  }
+
+  const handleCompleteProfile = async (e) => {
+    e.preventDefault()
+    const trimmedName = String(name || "").trim()
+    if (trimmedName.length < 2) {
+      toast.error("Please enter your full name")
+      return
+    }
+    if (!pendingAuthData?.accessToken || !pendingAuthData?.user) {
+      toast.error("Session expired. Please verify OTP again.")
+      setStep(1)
+      setOtp("")
+      setPendingAuthData(null)
+      return
+    }
+
+    if (submitting.current) return
+    submitting.current = true
+    setLoading(true)
+    try {
+      await apiClient.patch(
+        "/food/user/profile",
+        { name: trimmedName },
+        {
+          headers: {
+            Authorization: `Bearer ${pendingAuthData.accessToken}`,
+          },
+        },
+      )
+
+      const nextData = {
+        ...pendingAuthData,
+        user: {
+          ...pendingAuthData.user,
+          name: trimmedName,
+        },
+      }
+
+      setUnifiedAuthData(nextData)
+      toast.success("Profile completed successfully!")
+      navigate("/login/services")
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to save your name."
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -489,7 +560,16 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
                     </p>
                   </div>
 
-                  <form onSubmit={step === 1 ? handleSendOTP : handleVerifyOTP} className="w-full flex flex-col space-y-6">
+                  <form
+                    onSubmit={
+                      step === 1
+                        ? handleSendOTP
+                        : step === 2
+                          ? handleVerifyOTP
+                          : handleCompleteProfile
+                    }
+                    className="w-full flex flex-col space-y-6"
+                  >
                     <div className="w-full">
                       {step === 1 ? (
                         <div className="w-full">
@@ -508,7 +588,7 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
                             />
                           </div>
                         </div>
-                      ) : (
+                      ) : step === 2 ? (
                         <div className="space-y-5">
                           <div className="flex items-center justify-between p-3 bg-white rounded-full border border-gray-200 shadow-sm px-5">
                             <div>
@@ -573,6 +653,34 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
                             )}
                           </div>
                         </div>
+                      ) : (
+                        <div className="space-y-5">
+                          <div className="flex items-center justify-between p-3 bg-white rounded-full border border-gray-200 shadow-sm px-5">
+                            <div>
+                              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">New account</p>
+                              <p className="text-[15px] font-black text-slate-900 tracking-wide">+91 {phoneNumber}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleEditNumber}
+                              className="px-4 py-1.5 hover:bg-gray-100 rounded-full text-[13px] font-bold text-slate-900 transition-colors"
+                            >
+                              Edit
+                            </button>
+                          </div>
+
+                          <div className="relative w-full h-[60px] rounded-full border-[1.5px] border-[#F38F24] shadow-[inset_0_4px_16px_rgba(0,0,0,0.06)] bg-gradient-to-b from-white to-gray-200/80 flex items-center px-6 overflow-hidden">
+                            <input
+                              type="text"
+                              required
+                              autoFocus
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              className="flex-1 min-w-0 h-full bg-transparent text-[20px] font-medium text-[#1A1A1A] outline-none placeholder:text-gray-500"
+                              placeholder="Enter your full name"
+                            />
+                          </div>
+                        </div>
                       )}
                     </div>
 
@@ -586,9 +694,17 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
 
                       <button
                         type="submit"
-                        disabled={loading || (step === 1 && String(phoneNumber).length < 10) || (step === 2 && otp.length !== 4)}
+                        disabled={
+                          loading ||
+                          (step === 1 && String(phoneNumber).length < 10) ||
+                          (step === 2 && otp.length !== 4) ||
+                          (step === 3 && String(name).trim().length < 2)
+                        }
                         className={`w-full h-[60px] rounded-full font-semibold text-[17px] transition-all flex items-center justify-center gap-3 ${
-                          loading || (step === 1 && String(phoneNumber).length < 10) || (step === 2 && otp.length !== 4)
+                          loading ||
+                          (step === 1 && String(phoneNumber).length < 10) ||
+                          (step === 2 && otp.length !== 4) ||
+                          (step === 3 && String(name).trim().length < 2)
                             ? "bg-[#E5E7EB] text-[#6B7280] cursor-not-allowed shadow-inner"
                             : "bg-[#1A1A1A] text-white shadow-lg active:scale-[0.98]"
                         }`}
@@ -597,8 +713,15 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
                           <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
                           <>
-                            {step === 1 ? "Continue securely" : "Verify & Login"}
-                            <ArrowRight className={`w-5 h-5 ${loading || (step === 1 && String(phoneNumber).length < 10) || (step === 2 && otp.length !== 4) ? 'text-[#9CA3AF]' : 'text-[#F38F24]'}`} />
+                            {step === 1 ? "Continue securely" : step === 2 ? "Verify & Login" : "Complete Profile"}
+                            <ArrowRight className={`w-5 h-5 ${
+                              loading ||
+                              (step === 1 && String(phoneNumber).length < 10) ||
+                              (step === 2 && otp.length !== 4) ||
+                              (step === 3 && String(name).trim().length < 2)
+                                ? 'text-[#9CA3AF]'
+                                : 'text-[#F38F24]'
+                            }`} />
                           </>
                         )}
                       </button>

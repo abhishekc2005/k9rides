@@ -60,11 +60,20 @@ export const requestUserOtp = async (phone) => {
     throw new ValidationError("Phone is required");
   }
 
+  const existingUser = await FoodUser.findOne({ phone }).select("_id name").lean();
   const otp = await createOrUpdateOtp(phone, "user");
   // TODO: integrate SMS provider here
   const shouldExposeOtp =
     config.nodeEnv !== "production" || config.useDefaultOtp;
-  return shouldExposeOtp ? { otp } : {};
+  return {
+    ...(shouldExposeOtp ? { otp } : {}),
+    isExistingUser: Boolean(existingUser?._id),
+    needsNamePrompt:
+      !existingUser?._id ||
+      !existingUser?.name ||
+      String(existingUser.name).trim() === "" ||
+      String(existingUser.name).toLowerCase() === "null",
+  };
 };
 
 export const verifyUserOtpAndLogin = async (

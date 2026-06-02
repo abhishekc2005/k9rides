@@ -84,7 +84,8 @@ export default function SignIn() {
         return
       }
       const fullPhone = `${countryCode} ${phoneDigits}`
-      await authAPI.sendOTP(fullPhone, "login", null)
+      const response = await authAPI.sendOTP(fullPhone, "login", null)
+      const responseData = response?.data?.data || response?.data || {}
 
       const ref = String(searchParams.get("ref") || "").trim()
       const authData = {
@@ -94,6 +95,7 @@ export default function SignIn() {
         name: null,
         referralCode: ref || null,
         isSignUp: false,
+        expectedNewUser: responseData?.isExistingUser === false || responseData?.needsNamePrompt === true,
         module: "user",
       }
 
@@ -216,5 +218,4 @@ export default function SignIn() {
     </AnimatedPage>
   )
 }
-
 

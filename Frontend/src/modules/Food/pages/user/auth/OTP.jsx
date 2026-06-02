@@ -189,7 +189,11 @@ export default function OTP() {
       }
 
       const hasName = user.name && String(user.name).trim().length > 0 && String(user.name).toLowerCase() !== "null";
-      const needsName = data.isNewUser === true || !hasName;
+      const needsName =
+        authData?.expectedNewUser === true ||
+        data.isNewUser === true ||
+        data.needsNamePrompt === true ||
+        !hasName;
 
       if (needsName) {
         setVerifiedData(data)
@@ -446,5 +450,4 @@ export default function OTP() {
     </AnimatedPage>
   )
 }
-
 
