@@ -259,21 +259,16 @@ const OTPVerification = () => {
 
     return (
         <div 
-            className="min-h-[100dvh] relative bg-slate-50 select-none overflow-x-hidden font-sans"
+            className="min-h-[100dvh] relative bg-[#FAFAFA] select-none overflow-x-hidden font-sans flex flex-col"
         >
-            <div className="fixed inset-0 z-0 bg-slate-50">
-                <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-white via-white/80 to-transparent pointer-events-none" />
-                <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#F38F24]/5 rounded-full blur-[80px] pointer-events-none" />
-            </div>
-
-            <main className="relative z-10 mx-auto max-w-sm px-6 pt-8 pb-20 flex flex-col min-h-[100dvh] justify-center">
+            <main className="relative z-10 mx-auto max-w-sm w-full px-6 pt-12 pb-24 flex flex-col min-h-[100dvh]">
                 <motion.header 
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
-                    className="space-y-4 mb-8"
+                    className="space-y-8 mb-8"
                 >
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between">
                         <motion.button
                             variants={itemVariants}
                             whileTap={{ scale: 0.9 }}
@@ -282,32 +277,37 @@ const OTPVerification = () => {
                                     state: session,
                                 })
                             }
-                            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white border border-slate-100 text-slate-900 shadow-sm transition-all hover:bg-slate-50"
+                            className="flex h-11 w-11 items-center justify-center rounded-full bg-white border border-slate-100 text-[#1A1A1A] shadow-sm transition-all hover:bg-slate-50"
                         >
                             <ArrowLeft size={18} strokeWidth={2.5} />
                         </motion.button>
+                        
+                        <div className="bg-slate-100/80 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                            Security Check
+                        </div>
                     </div>
 
                     <motion.section 
                         variants={itemVariants}
-                        className="space-y-2"
+                        className="space-y-4"
                     >
-                        <div className="flex items-center gap-2.5">
-                             <div 
-                                className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#F38F24]/10 text-[#F38F24] shadow-sm border border-[#F38F24]/20"
-                            >
-                                <ShieldCheck size={16} strokeWidth={2.5} />
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1A1A1A] text-white shadow-sm">
+                                <ShieldCheck size={18} strokeWidth={2.5} />
                             </div>
-                            <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#F38F24]">
+                            <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400">
                                 Dynamic Verification
                             </span>
                         </div>
-                        <h1 className="font-sans text-[32px] font-black leading-tight tracking-tight text-slate-900 mt-1">
-                            Verify <span className="text-[#F38F24]">Phone</span>
-                        </h1>
-                        <p className="text-[13px] leading-relaxed text-slate-500 font-medium max-w-[28ch]">
-                            Enter the 4-digit code sent to <span className="whitespace-nowrap text-slate-900 font-bold underline underline-offset-4 decoration-2 decoration-slate-200">+91 {phone}</span>
-                        </p>
+                        <div>
+                            <h1 className="font-sans text-[42px] font-black leading-tight tracking-tight text-[#1A1A1A]">
+                                Verify <span className="text-[#F38F24]">Phone</span>
+                            </h1>
+                            <p className="text-[14px] leading-relaxed text-slate-500 font-medium max-w-[28ch] mt-2">
+                                Enter the 4-digit code sent to<br/>
+                                <span className="whitespace-nowrap text-[#1A1A1A] font-bold border-b border-slate-300 pb-0.5 mt-1 inline-block">+91 {phone}</span>
+                            </p>
+                        </div>
                     </motion.section>
                 </motion.header>
 
@@ -316,7 +316,7 @@ const OTPVerification = () => {
                     initial="hidden"
                     animate="visible"
                     ref={otpCardRef}
-                    className="bg-white p-6 rounded-[1.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 relative z-20 space-y-6"
+                    className="bg-white p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-slate-50 relative z-20 space-y-8 mt-4"
                     style={{ scrollMarginTop: '24vh' }}
                 >
                     <div className="flex justify-between gap-3">
@@ -334,10 +334,10 @@ const OTPVerification = () => {
                                 onChange={e => handleChange(index, e.target.value)}
                                 onKeyDown={e => handleKeyDown(index, e)}
                                 onFocus={() => otpCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                                className={`h-16 w-full rounded-[1rem] border-2 text-center text-2xl font-bold transition-all outline-none ${
+                                className={`h-[4.5rem] w-full rounded-[1.25rem] border-2 text-center text-3xl font-black transition-all outline-none ${
                                     digit 
-                                        ? 'border-slate-900 bg-white shadow-sm text-slate-900' 
-                                        : 'border-slate-100 bg-slate-50 text-slate-900 focus:border-[#F38F24] focus:bg-white focus:ring-4 focus:ring-[#F38F24]/10'
+                                        ? 'border-[#1A1A1A] bg-white text-[#1A1A1A] shadow-sm' 
+                                        : 'border-slate-100 bg-slate-50 text-[#1A1A1A] focus:border-[#F38F24] focus:bg-white focus:ring-4 focus:ring-[#F38F24]/10'
                                 }`}
                             />
                         ))}
@@ -362,34 +362,34 @@ const OTPVerification = () => {
                             )}
                         </AnimatePresence>
 
-                        <div className="flex flex-col items-center gap-3 py-2">
+                        <div className="flex flex-col items-center gap-2">
                             <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                                 Didn't receive the code?
                             </p>
                             <button
                                 onClick={handleResend}
                                 disabled={timer > 0 || loading}
-                                className={`flex items-center gap-2 text-sm font-bold uppercase tracking-wide transition-all ${
+                                className={`flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest transition-all ${
                                     timer > 0 
                                         ? 'text-slate-300' 
-                                        : 'text-slate-900 hover:text-[#F38F24]'
+                                        : 'text-[#1A1A1A] hover:text-[#F38F24]'
                                 }`}
                             >
-                                <MessageSquare size={14} className={timer > 0 ? 'opacity-30' : 'opacity-100'} />
+                                <MessageSquare size={14} strokeWidth={2.5} className={timer > 0 ? 'opacity-40' : 'opacity-100'} />
                                 {timer > 0 ? `Wait ${timer}s` : 'Resend Now'}
                             </button>
                         </div>
                     </div>
                 </motion.section>
 
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-xl border-t border-slate-100 z-50">
+                <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t border-slate-50 z-50">
                     <div className="mx-auto max-w-sm">
                         <motion.button
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleVerify}
                             disabled={loading || otp.join('').length !== 4}
-                            className={`group flex h-12 w-full items-center justify-center gap-2 rounded-[0.85rem] text-[14px] font-bold transition-all relative overflow-hidden ${
+                            className={`group flex h-14 w-full items-center justify-center gap-3 rounded-full text-[14px] font-black transition-all relative overflow-hidden ${
                                 otp.join('').length === 4
                                     ? 'bg-[#1A1A1A] text-white shadow-[0_4px_14px_rgba(26,26,26,0.15)] active:bg-black'
                                     : 'bg-slate-100 text-slate-400'
@@ -399,7 +399,7 @@ const OTPVerification = () => {
                                 <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    <span className="relative z-10 uppercase tracking-widest">Verify & Continue</span>
+                                    <span className="relative z-10 uppercase tracking-[0.15em]">Verify & Continue</span>
                                     <ChevronRight size={18} strokeWidth={3} className="relative z-10 group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
