@@ -46,7 +46,7 @@ function resolvePriceSlabByOrderValue(priceSlabs, orderValue) {
 
 export async function calculateOrderPricing(userId, dto) {
   const restaurant = await FoodRestaurant.findById(dto.restaurantId)
-    .select("status zoneId")
+    .select("status zoneId location")
     .lean();
   if (!restaurant) throw new ValidationError("Restaurant not found");
   if (restaurant.status !== "approved")
@@ -82,7 +82,13 @@ export async function calculateOrderPricing(userId, dto) {
   if (mode === 'distance_order_value') {
     const restCoords = extractCoords(restaurant);
     const customerCoords = extractCoords(dto?.address || dto?.deliveryAddress);
-    if (!restCoords || !customerCoords) {
+    if (!restCoords && !customerCoords) {
+      throw new ValidationError('Restaurant and customer locations are required for distance-based delivery fee calculation');
+    }
+    if (!restCoords) {
+      throw new ValidationError('Restaurant location is required for distance-based delivery fee calculation');
+    }
+    if (!customerCoords) {
       throw new ValidationError('Customer location is required for distance-based delivery fee calculation');
     }
     const [rLng, rLat] = restCoords;
