@@ -1590,6 +1590,7 @@ export async function getDeliveryCommissionRules() {
         name: r.name || '',
         minDistance: r.minDistance,
         maxDistance: r.maxDistance ?? null,
+        userDeliveryFee: r.userDeliveryFee ?? r.commissionPerKm ?? 0,
         commissionPerKm: r.commissionPerKm,
         basePayout: r.basePayout,
         status: r.status !== false
@@ -1632,6 +1633,7 @@ export async function createDeliveryCommissionRule(body) {
         {
             minDistance: body.minDistance,
             maxDistance: body.maxDistance ?? null,
+            userDeliveryFee: body.userDeliveryFee ?? body.commissionPerKm ?? 0,
             commissionPerKm: body.commissionPerKm,
             basePayout: body.basePayout,
             status: body.status ?? true
@@ -1642,6 +1644,7 @@ export async function createDeliveryCommissionRule(body) {
         name: body.name || '',
         minDistance: body.minDistance,
         maxDistance: body.maxDistance ?? null,
+        userDeliveryFee: body.userDeliveryFee ?? body.commissionPerKm ?? 0,
         commissionPerKm: body.commissionPerKm,
         basePayout: body.basePayout,
         status: body.status ?? true
@@ -1658,6 +1661,7 @@ export async function updateDeliveryCommissionRule(id, body) {
                   ...r,
                   minDistance: body.minDistance,
                   maxDistance: body.maxDistance ?? null,
+                  userDeliveryFee: body.userDeliveryFee ?? body.commissionPerKm ?? 0,
                   commissionPerKm: body.commissionPerKm,
                   basePayout: body.basePayout,
                   status: r.status !== false
@@ -1672,6 +1676,7 @@ export async function updateDeliveryCommissionRule(id, body) {
                 name: body.name || '',
                 minDistance: body.minDistance,
                 maxDistance: body.maxDistance ?? null,
+                userDeliveryFee: body.userDeliveryFee ?? body.commissionPerKm ?? 0,
                 commissionPerKm: body.commissionPerKm,
                 basePayout: body.basePayout
             }
@@ -1705,15 +1710,6 @@ export async function getFeeSettings() {
 }
 
 export async function upsertFeeSettings(body) {
-    if (Array.isArray(body.distanceOrderDeliveryFeeRules) && body.distanceOrderDeliveryFeeRules.length) {
-        const ids = body.distanceOrderDeliveryFeeRules.map((r) => r.distanceRuleId);
-        const existingRules = await FoodDeliveryCommissionRule.find({ _id: { $in: ids } }).select('_id').lean();
-        const found = new Set(existingRules.map((r) => String(r._id)));
-        const missing = ids.find((id) => !found.has(String(id)));
-        if (missing) {
-            throw new ValidationError(`Distance slab rule not found: ${missing}`);
-        }
-    }
     if (Array.isArray(body.distanceSlabAdminDeliveryCommission) && body.distanceSlabAdminDeliveryCommission.length) {
         const ids = body.distanceSlabAdminDeliveryCommission.map((r) => r.distanceRuleId);
         const existingRules = await FoodDeliveryCommissionRule.find({ _id: { $in: ids } }).select('_id').lean();
@@ -1725,6 +1721,14 @@ export async function upsertFeeSettings(body) {
     }
     // Single active doc pattern: keep only one active record.
     const existing = await FoodFeeSettings.findOne({ isActive: true }).sort({ createdAt: -1 });
+    const nextPlatformFee = body.platformFee !== undefined ? body.platformFee : existing?.platformFee;
+    const nextGstRate = body.gstRate !== undefined ? body.gstRate : existing?.gstRate;
+    if (!Number.isFinite(Number(nextPlatformFee)) || Number(nextPlatformFee) < 0) {
+        throw new ValidationError('Platform fee is required and must be 0 or greater');
+    }
+    if (!Number.isFinite(Number(nextGstRate)) || Number(nextGstRate) < 0 || Number(nextGstRate) > 100) {
+        throw new ValidationError('GST rate is required and must be between 0 and 100');
+    }
     if (existing) {
         const $set = {};
         const $unset = {};
@@ -1734,8 +1738,10 @@ export async function upsertFeeSettings(body) {
 
         if (body.deliveryFeeRanges !== undefined) $set.deliveryFeeRanges = body.deliveryFeeRanges;
         if (body.deliveryFeeComputationMode !== undefined) $set.deliveryFeeComputationMode = body.deliveryFeeComputationMode;
-        if (body.distanceOrderDeliveryFeeRules !== undefined) $set.distanceOrderDeliveryFeeRules = body.distanceOrderDeliveryFeeRules;
         if (body.distanceSlabAdminDeliveryCommission !== undefined) $set.distanceSlabAdminDeliveryCommission = body.distanceSlabAdminDeliveryCommission;
+        if (body.deliveryPartnerIncentiveRule !== undefined) $set.deliveryPartnerIncentiveRule = body.deliveryPartnerIncentiveRule;
+        // Legacy cleanup: this flow is removed, so always clear nested order-value slabs.
+        $set.distanceOrderDeliveryFeeRules = [];
 
         if (body.freeDeliveryThreshold === null) $unset.freeDeliveryThreshold = 1;
         else if (body.freeDeliveryThreshold !== undefined) $set.freeDeliveryThreshold = body.freeDeliveryThreshold;
@@ -1759,9 +1765,14 @@ export async function upsertFeeSettings(body) {
 
     const payload = {
         deliveryFeeRanges: body.deliveryFeeRanges ?? [],
-        deliveryFeeComputationMode: body.deliveryFeeComputationMode || 'order_value_range',
-        distanceOrderDeliveryFeeRules: body.distanceOrderDeliveryFeeRules ?? [],
+        deliveryFeeComputationMode: body.deliveryFeeComputationMode || 'distance_order_value',
+        distanceOrderDeliveryFeeRules: [],
         distanceSlabAdminDeliveryCommission: body.distanceSlabAdminDeliveryCommission ?? [],
+        deliveryPartnerIncentiveRule: body.deliveryPartnerIncentiveRule ?? {
+            isEnabled: false,
+            minOrderAmount: 0,
+            incentivePercent: 0
+        },
         isActive: body.isActive !== false
     };
     if (body.deliveryFee !== undefined && body.deliveryFee !== null) payload.deliveryFee = body.deliveryFee;

@@ -90,7 +90,7 @@ export async function createInitialTransaction(order) {
     
     // Split logic - Ensure all values are finite numbers
     const totalCustomerPaid = Number(order.pricing?.total) || 0;
-    const riderShare = Number(order.riderEarning) || 0;
+    const riderShare = Number(order.riderTotalPayout) || Number(order.riderEarning) || 0;
     
     // Prefer commission already computed & stored on the order (source of truth for this order),
     // fallback to rule snapshot for older orders.
@@ -109,11 +109,20 @@ export async function createInitialTransaction(order) {
     const adminDeliveryCommissionPercent = Number(order.pricing?.adminDeliveryCommissionPercent) || 0;
     const adminDeliveryCommissionAmount = Number(order.pricing?.adminDeliveryCommissionAmount) || 0;
     const riderDeliveryEarningAfterAdminCommission = Number(order.pricing?.riderDeliveryEarningAfterAdminCommission) || deliveryFee;
+    const deliveryPartnerIncentiveEnabled = order.pricing?.deliveryPartnerIncentiveEnabled === true;
+    const deliveryPartnerIncentivePercent = Number(order.pricing?.deliveryPartnerIncentivePercent) || 0;
+    const deliveryPartnerIncentiveAmount = Number(order.pricing?.deliveryPartnerIncentiveAmount) || 0;
+    const deliveryPartnerIncentiveEligible = order.pricing?.deliveryPartnerIncentiveEligible === true;
     const surgeAmount = Number(order.pricing?.surgeAmount) || 0;
     const tax = Number(order.pricing?.tax) || 0;
-    const riderBasePay = Number(order.riderBasePay) || Math.max(0, riderShare - surgeAmount);
+    const riderBasePay = Number(order.riderBasePay) || Number(order.pricing?.deliveryFeeBreakdown?.basePayout) || 0;
+    const riderDeliveryFeeShare = Number(order.riderDeliveryFeeShare) || riderDeliveryEarningAfterAdminCommission;
     const riderSurgePay = Number(order.riderSurgePay) || surgeAmount;
-    const riderTotalPayout = Number(order.riderTotalPayout) || riderShare;
+    const riderIncentivePay = Number(order.riderIncentivePay) || deliveryPartnerIncentiveAmount;
+    const riderTotalPayout =
+        Number(order.riderTotalPayout) ||
+        Number(order.riderEarning) ||
+        Math.round((riderBasePay + riderDeliveryFeeShare + riderSurgePay + riderIncentivePay) * 100) / 100;
 
     let restaurantNet = subtotal + packagingFee - restaurantCommission;
     let platformNetProfit = platformFee + deliveryFee + surgeAmount + restaurantCommission - riderShare;
@@ -139,7 +148,7 @@ export async function createInitialTransaction(order) {
 
     // Ensure nets are finite and rounded
     restaurantNet = Math.round((Number(restaurantNet) || 0) * 100) / 100;
-    platformNetProfit = Math.round((Number(platformNetProfit) || 0) * 100) / 100;
+    platformNetProfit = Math.max(0, Math.round((Number(platformNetProfit) || 0) * 100) / 100);
 
     const transaction = new FoodTransaction({
         orderId: order._id,
@@ -171,10 +180,15 @@ export async function createInitialTransaction(order) {
             tax: tax,
             packagingFee: packagingFee,
             deliveryFee: deliveryFee,
+            deliveryFeeBreakdown: order.pricing?.deliveryFeeBreakdown || null,
             adminDeliveryCommissionEnabled,
             adminDeliveryCommissionPercent,
             adminDeliveryCommissionAmount,
             riderDeliveryEarningAfterAdminCommission,
+            deliveryPartnerIncentiveEnabled,
+            deliveryPartnerIncentivePercent,
+            deliveryPartnerIncentiveAmount,
+            deliveryPartnerIncentiveEligible,
             platformFee: platformFee,
             surgeAmount: surgeAmount,
             restaurantCommission: restaurantCommission,
@@ -186,11 +200,12 @@ export async function createInitialTransaction(order) {
             totalCustomerPaid: totalCustomerPaid,
             restaurantShare: Math.max(0, restaurantNet),
             restaurantCommission: restaurantCommission,
-            riderShare: riderShare,
-            riderDeliveryFeeShare: Number(order.riderDeliveryFeeShare) || riderDeliveryEarningAfterAdminCommission,
+            riderShare: riderTotalPayout,
+            riderDeliveryFeeShare: riderDeliveryFeeShare,
             adminDeliveryCommissionAmount: adminDeliveryCommissionAmount,
             riderBasePay: riderBasePay,
             riderSurgePay: riderSurgePay,
+            riderIncentivePay: riderIncentivePay,
             riderTotalPayout: riderTotalPayout,
             platformNetProfit: platformNetProfit,
             taxAmount: tax

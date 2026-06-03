@@ -54,6 +54,7 @@ const deliveryRuleSchema = z.object({
     name: z.string().optional().or(z.literal('')),
     minDistance: z.number().min(0, 'Minimum distance must be 0 or greater'),
     maxDistance: z.number().nullable().optional(),
+    userDeliveryFee: z.number().min(0, 'User delivery fee must be 0 or greater'),
     commissionPerKm: z.number().min(0, 'Commission per km must be 0 or greater'),
     basePayout: z.number().min(0, 'Base payout must be 0 or greater'),
     status: z.boolean().optional()
@@ -64,6 +65,7 @@ export const validateDeliveryCommissionRuleDto = (body) => {
         name: body?.name != null ? String(body.name) : '',
         minDistance: Number(body?.minDistance),
         maxDistance: body?.maxDistance === null || body?.maxDistance === undefined || body?.maxDistance === '' ? null : Number(body.maxDistance),
+        userDeliveryFee: body?.userDeliveryFee === undefined ? Number(body?.commissionPerKm) : Number(body?.userDeliveryFee),
         commissionPerKm: Number(body?.commissionPerKm),
         basePayout: Number(body?.basePayout),
         status: body?.status
@@ -76,6 +78,7 @@ export const validateDeliveryCommissionRuleDto = (body) => {
         name: result.data.name ? result.data.name.trim() : '',
         minDistance: result.data.minDistance,
         maxDistance: result.data.maxDistance ?? null,
+        userDeliveryFee: result.data.userDeliveryFee,
         commissionPerKm: result.data.commissionPerKm,
         basePayout: result.data.basePayout,
         status: typeof result.data.status === 'boolean' ? result.data.status : undefined

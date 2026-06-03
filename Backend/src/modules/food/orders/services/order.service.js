@@ -6,12 +6,10 @@ import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
-import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
 import { ValidationError, ForbiddenError, NotFoundError } from '../../../../core/auth/errors.js';
 import { buildPaginationOptions, buildPaginatedResult } from '../../../../utils/helpers.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
 import { FoodOfferUsage } from '../../admin/models/offerUsage.model.js';
-import { FoodDeliveryCommissionRule } from '../../admin/models/deliveryCommissionRule.model.js';
 import { FoodDeliverySurgeZone } from '../../admin/models/deliverySurgeZone.model.js';
 import { FoodRestaurantCommission } from '../../admin/models/restaurantCommission.model.js';
 import { FoodTransaction } from '../models/foodTransaction.model.js';
@@ -30,13 +28,12 @@ import { fetchPolyline } from '../utils/googleMaps.js';
 import { getFirebaseDB } from '../../../../config/firebase.js';
 import * as foodTransactionService from './foodTransaction.service.js';
 import * as userWalletService from '../../user/services/userWallet.service.js';
-import { calculateOrderPricing } from './order-pricing.service.js';
+import { calculateOrderPricing, resolveOrderZoneId } from './order-pricing.service.js';
 import * as dispatchService from './order-dispatch.service.js';
 import * as deliveryService from './order-delivery.service.js';
 import * as paymentService from './order-payment.service.js';
 import {
   enqueueOrderEvent,
-  haversineKm,
   generateFourDigitDeliveryOtp,
   sanitizeOrderForExternal,
   emitDeliveryDropOtpToUser,
@@ -51,63 +48,7 @@ import {
   notifyRestaurantNewOrder,
   isStatusAdvance,
 } from './order.helpers.js';
-
-
-
-
-const COMMISSION_CACHE_MS = 10 * 1000;
-let commissionRulesCache = null;
-let commissionRulesLoadedAt = 0;
-
-async function getActiveCommissionRules() {
-  const now = Date.now();
-  if (
-    commissionRulesCache &&
-    now - commissionRulesLoadedAt < COMMISSION_CACHE_MS
-  ) {
-    return commissionRulesCache;
-  }
-  const list = await FoodDeliveryCommissionRule.find({
-    status: { $ne: false },
-  }).lean();
-  commissionRulesCache = list || [];
-  commissionRulesLoadedAt = now;
-  return commissionRulesCache;
-}
-
 // ðŸ—‘ï¸ Moved to foodTransaction.service.js to centralize finance logic.
-
-
-async function getRiderEarning(distanceKm) {
-  const d = Number(distanceKm);
-  if (!Number.isFinite(d) || d <= 0) return 0;
-  const rules = await getActiveCommissionRules();
-  if (!rules.length) return 0;
-
-  const sorted = [...rules].sort(
-    (a, b) => (a.minDistance || 0) - (b.minDistance || 0),
-  );
-  const baseRule = sorted.find((r) => Number(r.minDistance || 0) === 0) || null;
-  if (!baseRule) return 0;
-
-  let earning = Number(baseRule.basePayout || 0);
-
-  for (const r of sorted) {
-    const perKm = Number(r.commissionPerKm || 0);
-    if (!Number.isFinite(perKm) || perKm <= 0) continue;
-    const min = Number(r.minDistance || 0);
-    const max = r.maxDistance == null ? null : Number(r.maxDistance);
-    if (d <= min) continue;
-    const upper = max == null ? d : Math.min(d, max);
-    const kmInSlab = Math.max(0, upper - min);
-    if (kmInSlab > 0) {
-      earning += kmInSlab * perKm;
-    }
-  }
-
-  if (!Number.isFinite(earning) || earning <= 0) return 0;
-  return Math.round(earning);
-}
 
 async function getZoneSurgeSnapshot(zoneId) {
   if (!zoneId) return { surgeAmount: 0, isEnabled: false };
@@ -189,41 +130,49 @@ export async function createOrder(userId, dto) {
       return sum + Math.max(0, price) * Math.max(0, qty);
     }, 0);
 
+    const pricingResult = await calculateOrderPricing(userId, {
+      ...dto,
+      restaurantId: String(restaurantId),
+      address: dto.address || dto.deliveryAddress,
+      deliveryAddress: dto.deliveryAddress || dto.address,
+    });
+    if (!pricingResult?.pricing) {
+      throw new ValidationError("Unable to calculate order pricing from fee settings");
+    }
     const normalizedPricing = {
-      subtotal: Number(dto.pricing?.subtotal ?? computedSubtotal) || 0,
-      tax: Number(dto.pricing?.tax ?? 0) || 0,
-      packagingFee: Number(dto.pricing?.packagingFee ?? 0) || 0,
-      deliveryFee: Number(dto.pricing?.deliveryFee ?? 0) || 0,
-      deliveryFeeBreakdown: dto.pricing?.deliveryFeeBreakdown || null,
-      adminDeliveryCommissionEnabled: Boolean(dto.pricing?.adminDeliveryCommissionEnabled || false),
-      adminDeliveryCommissionPercent: Number(dto.pricing?.adminDeliveryCommissionPercent ?? 0) || 0,
-      adminDeliveryCommissionAmount: Number(dto.pricing?.adminDeliveryCommissionAmount ?? 0) || 0,
-      riderDeliveryEarningAfterAdminCommission: Number(dto.pricing?.riderDeliveryEarningAfterAdminCommission ?? dto.pricing?.deliveryFee ?? 0) || 0,
-      platformFee: Number(dto.pricing?.platformFee ?? 0) || 0,
-      surgeAmount: Number(dto.pricing?.surgeAmount ?? 0) || 0,
-      discount: Number(dto.pricing?.discount ?? 0) || 0,
-      total: Number(dto.pricing?.total ?? 0) || 0,
-      currency: String(dto.pricing?.currency || "INR"),
+      subtotal: Number(pricingResult.pricing.subtotal ?? computedSubtotal) || 0,
+      tax: Number(pricingResult.pricing.tax ?? 0) || 0,
+      packagingFee: Number(pricingResult.pricing.packagingFee ?? 0) || 0,
+      deliveryFee: Number(pricingResult.pricing.deliveryFee ?? 0) || 0,
+      deliveryFeeBreakdown: pricingResult.pricing.deliveryFeeBreakdown || null,
+      adminDeliveryCommissionEnabled: Boolean(pricingResult.pricing.adminDeliveryCommissionEnabled || false),
+      adminDeliveryCommissionPercent: Number(pricingResult.pricing.adminDeliveryCommissionPercent ?? 0) || 0,
+      adminDeliveryCommissionAmount: Number(pricingResult.pricing.adminDeliveryCommissionAmount ?? 0) || 0,
+      riderDeliveryEarningAfterAdminCommission: Number(pricingResult.pricing.riderDeliveryEarningAfterAdminCommission ?? 0) || 0,
+      deliveryPartnerIncentiveEnabled: Boolean(pricingResult.pricing.deliveryPartnerIncentiveEnabled || false),
+      deliveryPartnerIncentivePercent: Number(pricingResult.pricing.deliveryPartnerIncentivePercent ?? 0) || 0,
+      deliveryPartnerIncentiveAmount: Number(pricingResult.pricing.deliveryPartnerIncentiveAmount ?? 0) || 0,
+      deliveryPartnerIncentiveEligible: Boolean(pricingResult.pricing.deliveryPartnerIncentiveEligible || false),
+      platformFee: Number(pricingResult.pricing.platformFee ?? 0) || 0,
+      surgeAmount: Number(pricingResult.pricing.surgeAmount ?? 0) || 0,
+      discount: Number(pricingResult.pricing.discount ?? 0) || 0,
+      total: Number(pricingResult.pricing.total ?? 0) || 0,
+      currency: String(pricingResult.pricing.currency || "INR"),
+      couponCode: pricingResult.pricing.couponCode || null,
+      appliedCoupon: pricingResult.pricing.appliedCoupon || null,
     };
 
-    const activeFeeSettings = await FoodFeeSettings.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
-    const deliveryFeeMode = String(activeFeeSettings?.deliveryFeeComputationMode || 'order_value_range');
-    if (deliveryFeeMode === 'distance_order_value') {
-      const pricingResult = await calculateOrderPricing(userId, dto);
-      if (pricingResult?.pricing) {
-        normalizedPricing.deliveryFee = Number(pricingResult.pricing.deliveryFee || 0);
-        normalizedPricing.deliveryFeeBreakdown = pricingResult.pricing.deliveryFeeBreakdown || null;
-        normalizedPricing.adminDeliveryCommissionEnabled = Boolean(pricingResult.pricing.adminDeliveryCommissionEnabled || false);
-        normalizedPricing.adminDeliveryCommissionPercent = Number(pricingResult.pricing.adminDeliveryCommissionPercent || 0);
-        normalizedPricing.adminDeliveryCommissionAmount = Number(pricingResult.pricing.adminDeliveryCommissionAmount || 0);
-        normalizedPricing.riderDeliveryEarningAfterAdminCommission = Number(pricingResult.pricing.riderDeliveryEarningAfterAdminCommission || normalizedPricing.deliveryFee || 0);
-        normalizedPricing.tax = Number(pricingResult.pricing.tax || normalizedPricing.tax || 0);
-        normalizedPricing.platformFee = Number(pricingResult.pricing.platformFee || normalizedPricing.platformFee || 0);
-        normalizedPricing.discount = Number(pricingResult.pricing.discount || normalizedPricing.discount || 0);
-      }
-    }
-
-    const orderZoneId = dto.zoneId ? toObjectId(dto.zoneId, 'Zone ID') : toObjectId(restaurant.zoneId, 'Restaurant Zone ID');
+    const resolvedOrderZoneId = await resolveOrderZoneId(
+      {
+        ...dto,
+        address: dto.address || dto.deliveryAddress,
+        deliveryAddress: dto.deliveryAddress || dto.address,
+      },
+      restaurant
+    );
+    const orderZoneId = resolvedOrderZoneId
+      ? toObjectId(resolvedOrderZoneId, 'Zone ID')
+      : toObjectId(restaurant.zoneId, 'Restaurant Zone ID');
     const surgeSnapshot = await getZoneSurgeSnapshot(orderZoneId);
     normalizedPricing.surgeAmount = surgeSnapshot.surgeAmount;
 
@@ -248,21 +197,11 @@ export async function createOrder(userId, dto) {
       qr: {},
     };
 
-    let distanceKm = null;
-    if (
-      restaurant.location?.coordinates?.length === 2 &&
-      dto.address?.location?.coordinates?.length === 2
-    ) {
-      const [rLng, rLat] = restaurant.location.coordinates;
-      const [dLng, dLat] = dto.address.location.coordinates;
-      const d = haversineKm(rLat, rLng, dLat, dLng);
-      distanceKm = Number.isFinite(d) ? d : null;
-    }
-
-    const riderBasePay = await getRiderEarning(distanceKm) || 0;
+    const riderBasePay = Math.round((Number(normalizedPricing.deliveryFeeBreakdown?.basePayout || 0) * 100)) / 100;
     const riderDeliveryFeeShare = Math.round((Number(normalizedPricing.riderDeliveryEarningAfterAdminCommission || 0) * 100)) / 100;
     const riderSurgePay = Number(normalizedPricing.surgeAmount) || 0;
-    const riderTotalPayout = Math.round((riderBasePay + riderSurgePay + riderDeliveryFeeShare) * 100) / 100;
+    const riderIncentivePay = Math.round((Number(normalizedPricing.deliveryPartnerIncentiveAmount || 0) * 100)) / 100;
+    const riderTotalPayout = Math.round((riderBasePay + riderSurgePay + riderDeliveryFeeShare + riderIncentivePay) * 100) / 100;
     const riderEarning = riderTotalPayout;
     
     // Calculate restaurant commission from subtotal
@@ -321,6 +260,7 @@ export async function createOrder(userId, dto) {
       riderBasePay: Number(riderBasePay) || 0,
       riderSurgePay: Number(riderSurgePay) || 0,
       riderDeliveryFeeShare: Number(riderDeliveryFeeShare) || 0,
+      riderIncentivePay: Number(riderIncentivePay) || 0,
       riderTotalPayout: Number(riderTotalPayout) || 0,
       riderEarning: Number(riderEarning) || 0,
       platformProfit: Number(platformProfit) || 0,

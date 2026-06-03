@@ -17,7 +17,7 @@ const feeSettingsSchema = new mongoose.Schema(
         deliveryFeeComputationMode: {
             type: String,
             enum: ['order_value_range', 'distance_order_value'],
-            default: 'order_value_range'
+            default: 'distance_order_value'
         },
         distanceOrderDeliveryFeeRules: {
             type: [
@@ -56,6 +56,21 @@ const feeSettingsSchema = new mongoose.Schema(
                 )
             ],
             default: []
+        },
+        deliveryPartnerIncentiveRule: {
+            type: new mongoose.Schema(
+                {
+                    isEnabled: { type: Boolean, default: false },
+                    minOrderAmount: { type: Number, min: 0, default: 0 },
+                    incentivePercent: { type: Number, min: 0, max: 100, default: 0 }
+                },
+                { _id: false }
+            ),
+            default: {
+                isEnabled: false,
+                minOrderAmount: 0,
+                incentivePercent: 0
+            }
         },
         freeDeliveryThreshold: { type: Number, min: 0 },
         platformFee: { type: Number, min: 0 },

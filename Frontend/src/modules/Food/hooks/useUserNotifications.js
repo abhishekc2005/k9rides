@@ -11,6 +11,15 @@ const debugLog = (...args) => {
   }
 };
 
+const sanitizeNotificationText = (value) =>
+  String(value || '')
+    .replace(/â€”/g, '-')
+    .replace(/â€¢/g, '•')
+    .replace(/Â/g, '')
+    .replace(/â[^\s]*/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
 /**
  * Hook for user to receive real-time order notifications.
  * Dispatches 'orderStatusNotification' custom event for OrderTrackingCard.
@@ -81,12 +90,24 @@ export const useUserNotifications = () => {
 
     socketRef.current.on('order_status_update', (data) => {
       debugLog('🔔 Order status update received:', data);
-      
-      const title = data.title || `Order #${data.orderId || 'Update'}`;
-      const message = data.message || `Your order status is now ${String(data.orderStatus || '').replace(/_/g, ' ')}`;
+
+      const statusRaw = String(data?.orderStatus || '').toLowerCase();
+      const isCancelled = statusRaw.includes('cancel');
+
+      let title = sanitizeNotificationText(
+        data.title || `Order #${data.orderId || 'Update'}`
+      );
+      let message = sanitizeNotificationText(
+        data.message || `Your order status is now ${String(data.orderStatus || '').replace(/_/g, ' ')}`
+      );
+
+      if (isCancelled) {
+        title = 'Order Cancelled';
+        if (!message) message = 'Your order was cancelled.';
+      }
 
       // Optional: Show toast for important updates (Cancel, Ready, etc.)
-      const isImportant = String(data.orderStatus).includes('cancel') || ['ready_for_pickup', 'ready', 'confirmed'].includes(data.orderStatus);
+      const isImportant = isCancelled || ['ready_for_pickup', 'ready', 'confirmed'].includes(data.orderStatus);
       if (isImportant) {
         toast.message(title, {
           description: message,

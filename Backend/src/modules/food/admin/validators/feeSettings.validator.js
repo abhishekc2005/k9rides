@@ -7,30 +7,24 @@ const rangeSchema = z.object({
     fee: z.number().min(0)
 });
 
-const distanceOrderPriceSlabSchema = z.object({
-    minOrderValue: z.number().min(0),
-    maxOrderValue: z.number().min(0),
-    deliveryFee: z.number().min(0),
-    isActive: z.boolean().optional()
-});
-
-const distanceOrderRuleSchema = z.object({
-    distanceRuleId: z.string().min(1),
-    priceSlabs: z.array(distanceOrderPriceSlabSchema).optional()
-});
-
 const distanceSlabAdminDeliveryCommissionSchema = z.object({
     distanceRuleId: z.string().min(1),
     isEnabled: z.boolean().optional(),
     adminDeliveryCommissionPercent: z.number().min(0).max(100).optional()
 });
 
+const deliveryPartnerIncentiveRuleSchema = z.object({
+    isEnabled: z.boolean().optional(),
+    minOrderAmount: z.number().min(0).optional(),
+    incentivePercent: z.number().min(0).max(100).optional()
+});
+
 const feeSettingsUpsertSchema = z.object({
     deliveryFee: z.number().min(0).nullable().optional(),
     deliveryFeeRanges: z.array(rangeSchema).optional(),
-    deliveryFeeComputationMode: z.enum(['order_value_range', 'distance_order_value']).optional(),
-    distanceOrderDeliveryFeeRules: z.array(distanceOrderRuleSchema).optional(),
+    deliveryFeeComputationMode: z.enum(['distance_order_value']).optional(),
     distanceSlabAdminDeliveryCommission: z.array(distanceSlabAdminDeliveryCommissionSchema).optional(),
+    deliveryPartnerIncentiveRule: deliveryPartnerIncentiveRuleSchema.optional(),
     freeDeliveryThreshold: z.number().min(0).nullable().optional(),
     platformFee: z.number().min(0).nullable().optional(),
     gstRate: z.number().min(0).max(100).nullable().optional(),
@@ -56,19 +50,6 @@ export const validateFeeSettingsUpsertDto = (body) => {
             body?.deliveryFeeComputationMode !== undefined
                 ? String(body.deliveryFeeComputationMode)
                 : undefined,
-        distanceOrderDeliveryFeeRules: Array.isArray(body?.distanceOrderDeliveryFeeRules)
-            ? body.distanceOrderDeliveryFeeRules.map((rule) => ({
-                distanceRuleId: String(rule?.distanceRuleId || ''),
-                priceSlabs: Array.isArray(rule?.priceSlabs)
-                    ? rule.priceSlabs.map((s) => ({
-                        minOrderValue: Number(s?.minOrderValue),
-                        maxOrderValue: Number(s?.maxOrderValue),
-                        deliveryFee: Number(s?.deliveryFee),
-                        isActive: s?.isActive !== undefined ? Boolean(s.isActive) : true
-                    }))
-                    : []
-            }))
-            : undefined,
         distanceSlabAdminDeliveryCommission: Array.isArray(body?.distanceSlabAdminDeliveryCommission)
             ? body.distanceSlabAdminDeliveryCommission.map((row) => ({
                 distanceRuleId: String(row?.distanceRuleId || ''),
@@ -78,6 +59,19 @@ export const validateFeeSettingsUpsertDto = (body) => {
                         ? Number(row.adminDeliveryCommissionPercent)
                         : 0
             }))
+            : undefined,
+        deliveryPartnerIncentiveRule: body?.deliveryPartnerIncentiveRule
+            ? {
+                isEnabled: body.deliveryPartnerIncentiveRule.isEnabled !== undefined
+                    ? Boolean(body.deliveryPartnerIncentiveRule.isEnabled)
+                    : false,
+                minOrderAmount: body.deliveryPartnerIncentiveRule.minOrderAmount !== undefined
+                    ? Number(body.deliveryPartnerIncentiveRule.minOrderAmount)
+                    : 0,
+                incentivePercent: body.deliveryPartnerIncentiveRule.incentivePercent !== undefined
+                    ? Number(body.deliveryPartnerIncentiveRule.incentivePercent)
+                    : 0,
+            }
             : undefined,
         freeDeliveryThreshold:
             body?.freeDeliveryThreshold === null
@@ -116,37 +110,6 @@ export const validateFeeSettingsUpsertDto = (body) => {
         result.data.deliveryFeeRanges = sorted;
     }
 
-    if (Array.isArray(result.data.distanceOrderDeliveryFeeRules)) {
-        const dedupe = new Set();
-        for (const rule of result.data.distanceOrderDeliveryFeeRules) {
-            if (dedupe.has(rule.distanceRuleId)) {
-                throw new ValidationError('Duplicate distanceRuleId found in distance-order fee rules');
-            }
-            dedupe.add(rule.distanceRuleId);
-            const slabs = Array.isArray(rule.priceSlabs) ? [...rule.priceSlabs] : [];
-            const sortedSlabs = slabs.sort((a, b) => a.minOrderValue - b.minOrderValue);
-            for (const slab of sortedSlabs) {
-                if (slab.minOrderValue >= slab.maxOrderValue) {
-                    throw new ValidationError('Each price slab must have minOrderValue less than maxOrderValue');
-                }
-            }
-            const activeSlabs = sortedSlabs.filter((s) => s.isActive !== false);
-            for (let i = 1; i < activeSlabs.length; i++) {
-                const prev = activeSlabs[i - 1];
-                const cur = activeSlabs[i];
-                if (cur.minOrderValue < prev.maxOrderValue) {
-                    throw new ValidationError('Price slabs must not overlap inside a distance slab');
-                }
-            }
-            rule.priceSlabs = sortedSlabs.map((s) => ({
-                ...s,
-                minOrderValue: Math.round(s.minOrderValue * 100) / 100,
-                maxOrderValue: Math.round(s.maxOrderValue * 100) / 100,
-                deliveryFee: Math.round(s.deliveryFee * 100) / 100
-            }));
-        }
-    }
-
     if (Array.isArray(result.data.distanceSlabAdminDeliveryCommission)) {
         const dedupe = new Set();
         result.data.distanceSlabAdminDeliveryCommission = result.data.distanceSlabAdminDeliveryCommission.map((row) => {
@@ -161,6 +124,14 @@ export const validateFeeSettingsUpsertDto = (body) => {
                 adminDeliveryCommissionPercent: pct
             };
         });
+    }
+
+    if (result.data.deliveryPartnerIncentiveRule) {
+        result.data.deliveryPartnerIncentiveRule = {
+            isEnabled: result.data.deliveryPartnerIncentiveRule.isEnabled === true,
+            minOrderAmount: Math.round((Number(result.data.deliveryPartnerIncentiveRule.minOrderAmount || 0)) * 100) / 100,
+            incentivePercent: Math.round((Number(result.data.deliveryPartnerIncentiveRule.incentivePercent || 0)) * 100) / 100,
+        };
     }
 
     return result.data;

@@ -65,6 +65,12 @@ export default function LocationPrompt() {
 
   const handleAllow = async () => {
     await requestLocation()
+    try {
+      localStorage.setItem("deliveryAddressMode", "current")
+      window.dispatchEvent(new Event("deliveryAddressModeChanged"))
+    } catch {
+      // Ignore storage/event errors; location is already fetched.
+    }
     // Wait a bit for location to be set
     setTimeout(() => {
       setShowPrompt(false)

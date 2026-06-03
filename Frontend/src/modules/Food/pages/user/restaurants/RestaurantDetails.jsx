@@ -1342,8 +1342,6 @@ function RestaurantDetailsContent() {
           : 0
         const totalCount = itemCount + subsectionCount
 
-        if (totalCount <= 0) return null
-
         return {
           id: normalizeMenuCategoryId(section?.categoryId || sectionTitle || index) || `section-${index}`,
           name: sectionTitle,

@@ -25,19 +25,23 @@ const zoneKeyFromCoords = (lat, lng) => {
   return `${rLat},${rLng}`
 }
 
-const applyZonePayload = (data, { setZoneId, setZone, setZoneStatus }) => {
+const applyZonePayload = (data, { setZoneId, setZone, setZoneStatus, persistToStorage = true }) => {
   if (data?.status === 'IN_SERVICE' && data.zoneId) {
     setZoneId(data.zoneId)
     setZone(data.zone || null)
     setZoneStatus('IN_SERVICE')
-    localStorage.setItem('userZoneId', data.zoneId)
-    localStorage.setItem('userZone', JSON.stringify(data.zone))
+    if (persistToStorage) {
+      localStorage.setItem('userZoneId', data.zoneId)
+      localStorage.setItem('userZone', JSON.stringify(data.zone))
+    }
   } else {
     setZoneId(null)
     setZone(null)
     setZoneStatus('OUT_OF_SERVICE')
-    localStorage.removeItem('userZoneId')
-    localStorage.removeItem('userZone')
+    if (persistToStorage) {
+      localStorage.removeItem('userZoneId')
+      localStorage.removeItem('userZone')
+    }
   }
 }
 
@@ -46,7 +50,11 @@ const applyZonePayload = (data, { setZoneId, setZone, setZoneStatus }) => {
  * Hook to detect and manage user's zone based on location
  * Automatically detects zone when location is available
  */
-export function useZone(location) {
+export function useZone(location, options = {}) {
+  const {
+    persistToStorage = true,
+    usePersistedFallback = true,
+  } = options
   const [zoneId, setZoneId] = useState(null)
   const [zoneStatus, setZoneStatus] = useState('loading') // 'loading' | 'IN_SERVICE' | 'OUT_OF_SERVICE'
   const [zone, setZone] = useState(null)
@@ -73,7 +81,7 @@ export function useZone(location) {
       if (key) {
         const cached = zoneCache.get(key)
         if (cached && now - cached.ts < ZONE_CACHE_TTL_MS) {
-          applyZonePayload(cached.payload, { setZoneId, setZone, setZoneStatus })
+          applyZonePayload(cached.payload, { setZoneId, setZone, setZoneStatus, persistToStorage })
           return
         }
       }
@@ -97,7 +105,7 @@ export function useZone(location) {
 
       const data = await promise
       if (key) zoneCache.set(key, { ts: now, payload: data })
-      applyZonePayload(data, { setZoneId, setZone, setZoneStatus })
+      applyZonePayload(data, { setZoneId, setZone, setZoneStatus, persistToStorage })
     } catch (err) {
       debugError("Error detecting zone:", err);
       setError(
@@ -105,7 +113,7 @@ export function useZone(location) {
       );
 
       // Try to use cached zone if available
-      const cachedZoneId = localStorage.getItem("userZoneId");
+      const cachedZoneId = usePersistedFallback ? localStorage.getItem("userZoneId") : null;
       if (cachedZoneId) {
         const cachedZone = localStorage.getItem("userZone");
         setZoneId(cachedZoneId);
@@ -148,7 +156,7 @@ export function useZone(location) {
       }
     } else {
       // Try to use cached zone if location not available
-      const cachedZoneId = localStorage.getItem("userZoneId");
+      const cachedZoneId = usePersistedFallback ? localStorage.getItem("userZoneId") : null;
       if (cachedZoneId) {
         const cachedZone = localStorage.getItem("userZone");
         setZoneId(cachedZoneId);

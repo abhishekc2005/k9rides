@@ -1146,14 +1146,39 @@ export default function Home() {
     return null;
   }, [defaultSavedAddress]);
 
+  const savedLocationCache = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem("userLocation");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const lat = Number(parsed?.latitude);
+      const lng = Number(parsed?.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return {
+        latitude: lat,
+        longitude: lng,
+        city: parsed?.city || "",
+        state: parsed?.state || "",
+        address: parsed?.address || "",
+        formattedAddress: parsed?.formattedAddress || "",
+      };
+    } catch {
+      return null;
+    }
+  }, [deliveryAddressMode, defaultSavedAddress?.id, defaultSavedAddress?._id]);
+
   const effectiveLocation = useMemo(() => {
     const useSavedAddress =
       deliveryAddressMode === "saved" &&
-      Number.isFinite(defaultSavedAddressLocation?.latitude) &&
-      Number.isFinite(defaultSavedAddressLocation?.longitude);
+      (Number.isFinite(defaultSavedAddressLocation?.latitude) &&
+        Number.isFinite(defaultSavedAddressLocation?.longitude)) ||
+      (Number.isFinite(savedLocationCache?.latitude) &&
+        Number.isFinite(savedLocationCache?.longitude));
 
-    return useSavedAddress ? defaultSavedAddressLocation : location;
-  }, [deliveryAddressMode, defaultSavedAddressLocation, location]);
+    if (!useSavedAddress) return location;
+    return defaultSavedAddressLocation || savedLocationCache || location;
+  }, [deliveryAddressMode, defaultSavedAddressLocation, savedLocationCache, location]);
 
   const {
     zoneId,
@@ -1168,11 +1193,11 @@ export default function Home() {
   const [showManageCollections, setShowManageCollections] = useState(false);
   const [selectedRestaurantSlug, setSelectedRestaurantSlug] = useState(null);
 
-  // Fetch categories (zone-aware) for the homepage category rail.
+  // Fetch admin categories as global for homepage category rail.
   useEffect(() => {
     let cancelled = false
     const run = async () => {
-      const zoneKey = String(zoneId || "global")
+      const zoneKey = "global-admin-categories"
       try {
         // Dedupe repeated calls (StrictMode + zone settling). Cache per zoneKey and share in-flight request.
         const cached = publicCategoriesCacheRef.current.get(zoneKey)
@@ -1190,7 +1215,7 @@ export default function Home() {
 
         setLoadingRealCategories(true)
         const promise = (async () => {
-          const res = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {})
+          const res = await adminAPI.getPublicCategories({})
           const list =
             res?.data?.data?.categories ||
             res?.data?.categories ||
@@ -1228,7 +1253,7 @@ export default function Home() {
     return () => {
       cancelled = true
     }
-  }, [zoneId, normalizeImageUrl])
+  }, [normalizeImageUrl])
 
   // Memoize cartCount to prevent recalculation on every render - use cart directly
   const cartCount = useMemo(
@@ -2768,8 +2793,7 @@ export default function Home() {
                               {/* Featured Dish Badge - Top Left */}
                               <div className="absolute top-4 left-4 flex items-center z-10 transform transition-transform duration-300 group-hover:scale-105">
                                 <div className="bg-black/70 backdrop-blur-lg text-white px-4 py-1.5 rounded-full text-[11px] font-medium tracking-tight flex items-center shadow-2xl border border-white/20">
-                                  {restaurant.featuredDish} â€¢ â‚¹
-                                  {restaurant.featuredPrice}
+                                  {restaurant.featuredDish} @ Rs {restaurant.featuredPrice}
                                 </div>
                               </div>
 

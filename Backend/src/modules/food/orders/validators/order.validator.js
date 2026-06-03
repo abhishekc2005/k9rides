@@ -32,6 +32,26 @@ const addressSchema = z.object({
         .optional()
 });
 
+const calculateAddressSchema = z.object({
+    label: z.enum(['Home', 'Office', 'Other']).optional(),
+    name: z.string().optional(),
+    fullName: z.string().optional(),
+    street: z.string().optional(),
+    additionalDetails: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zipCode: z.string().optional(),
+    phone: z.string().optional(),
+    formattedAddress: z.string().optional(),
+    address: z.string().optional(),
+    location: z
+        .object({
+            type: z.literal('Point').optional(),
+            coordinates: z.tuple([z.number(), z.number()]).optional()
+        })
+        .optional()
+});
+
 const pricingSchema = z.object({
     subtotal: z.number().min(0),
     tax: z.number().min(0).optional(),
@@ -49,6 +69,8 @@ export function validateCalculateOrderDto(body) {
         items: z.array(orderItemSchema).min(1, 'At least one item required'),
         restaurantId: z.string().min(1, 'Restaurant id required'),
         deliveryAddressId: z.string().optional(),
+        deliveryAddress: calculateAddressSchema.optional(),
+        address: calculateAddressSchema.optional(),
         zoneId: z.string().optional(),
         couponCode: z.string().optional(),
         deliveryFleet: z.string().optional()

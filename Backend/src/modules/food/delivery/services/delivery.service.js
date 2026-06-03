@@ -583,6 +583,15 @@ const toTripDto = (order) => {
     const pricingTotal = Number(order?.pricing?.total) || Number(order?.totalAmount) || 0;
 
     const earningAmount = Number(order?.riderEarning ?? order?.deliveryEarning ?? 0) || 0;
+    const riderBasePay = Number(order?.riderBasePay) || Number(order?.pricing?.deliveryFeeBreakdown?.basePayout) || 0;
+    const riderDeliveryFeeShare = Number(order?.riderDeliveryFeeShare) || Number(order?.pricing?.riderDeliveryEarningAfterAdminCommission) || 0;
+    const riderSurgePay = Number(order?.riderSurgePay) || Number(order?.pricing?.surgeAmount) || 0;
+    const riderIncentivePay = Number(order?.riderIncentivePay) || Number(order?.pricing?.deliveryPartnerIncentiveAmount) || 0;
+    const computedTotalPayout = Math.round((riderBasePay + riderDeliveryFeeShare + riderSurgePay + riderIncentivePay) * 100) / 100;
+    const riderTotalPayout =
+        Number(order?.riderTotalPayout) ||
+        computedTotalPayout ||
+        earningAmount;
     const codAmount = paymentMethod === 'cash' ? Number(order?.payment?.amountDue) || 0 : 0;
     const codCollectedAmount = paymentMethod === 'cash' && order?.payment?.status === 'paid' ? codAmount : 0;
     return {
@@ -599,9 +608,14 @@ const toTripDto = (order) => {
         orderTotal: pricingTotal,
         codAmount: codAmount,
         codCollectedAmount,
-        deliveryEarning: earningAmount,
-        earningAmount: earningAmount,
-        amount: earningAmount, // legacy fallback
+        deliveryEarning: riderTotalPayout,
+        earningAmount: riderTotalPayout,
+        amount: riderTotalPayout, // legacy fallback
+        riderBasePay,
+        riderDeliveryFeeShare,
+        riderSurgePay,
+        riderIncentivePay,
+        riderTotalPayout,
         createdAt: order?.createdAt,
         deliveredAt: deliveredAt,
         completedAt: deliveredAt,

@@ -100,24 +100,35 @@ export const getDeliveryPartnerWalletEnhanced = async (deliveryPartnerId) => {
     const [ordersTx] = await Promise.all([
         FoodOrder.find({ 'dispatch.deliveryPartnerId': partnerId, orderStatus: 'delivered' })
             .sort({ createdAt: -1 })
-            .select('orderId riderEarning riderBasePay riderSurgePay riderTotalPayout payment orderStatus createdAt')
+            .select('orderId riderEarning riderBasePay riderDeliveryFeeShare riderSurgePay riderIncentivePay riderTotalPayout pricing payment orderStatus createdAt')
             .limit(20)
             .lean(),
     ]);
 
     const transactions = [
-        ...(ordersTx || []).map(o => ({
-            id: o._id,
-            type: 'payment',
-            amount: o.riderEarning || 0,
-            riderBasePay: Number(o.riderBasePay || 0),
-            riderSurgePay: Number(o.riderSurgePay || 0),
-            riderTotalPayout: Number(o.riderTotalPayout || o.riderEarning || 0),
-            status: 'Completed',
-            date: o.createdAt,
-            description: o.payment?.method === 'cash' ? 'COD delivery earning' : 'Online delivery earning',
-            orderId: o.orderId
-        })),
+        ...(ordersTx || []).map(o => {
+            const riderBasePay = Number(o.riderBasePay || o.pricing?.deliveryFeeBreakdown?.basePayout || 0);
+            const riderDeliveryFeeShare = Number(o.riderDeliveryFeeShare || o.pricing?.riderDeliveryEarningAfterAdminCommission || 0);
+            const riderSurgePay = Number(o.riderSurgePay || o.pricing?.surgeAmount || 0);
+            const riderIncentivePay = Number(o.riderIncentivePay || o.pricing?.deliveryPartnerIncentiveAmount || 0);
+            const computedPayout = Math.round((riderBasePay + riderDeliveryFeeShare + riderSurgePay + riderIncentivePay) * 100) / 100;
+            const riderTotalPayout = Number(o.riderTotalPayout || computedPayout || o.riderEarning || 0);
+
+            return {
+                id: o._id,
+                type: 'payment',
+                amount: riderTotalPayout,
+                riderBasePay,
+                riderDeliveryFeeShare,
+                riderSurgePay,
+                riderIncentivePay,
+                riderTotalPayout,
+                status: 'Completed',
+                date: o.createdAt,
+                description: o.payment?.method === 'cash' ? 'COD delivery earning' : 'Online delivery earning',
+                orderId: o.orderId
+            };
+        }),
         ...(withdrawalsList || []).map(w => ({
             id: w._id,
             type: 'withdrawal',

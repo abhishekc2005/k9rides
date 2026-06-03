@@ -774,7 +774,7 @@ export default function DeliveryBoyCommission() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Fixed Payout (?) <span className="text-red-500">*</span>
+                Fixed Payout <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"

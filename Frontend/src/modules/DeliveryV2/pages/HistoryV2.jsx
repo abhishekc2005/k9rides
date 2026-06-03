@@ -26,6 +26,7 @@ export const HistoryV2 = () => {
   const [showBonusModal, setShowBonusModal] = useState(false);
   const [bonusTransactions, setBonusTransactions] = useState([]);
   const [bonusLoading, setBonusLoading] = useState(false);
+  const [expandedTripId, setExpandedTripId] = useState(null);
 
   const tripTypes = ["ALL TRIPS", "Completed", "Cancelled", "Pending"];
 
@@ -111,7 +112,31 @@ export const HistoryV2 = () => {
     const qty = first.quantity || first.qty || 1;
     const name = first.name || first.itemName || 'Item';
     return `${qty}x ${name}${items.length > 1 ? ` +${items.length - 1} more` : ''}`;
-  }
+  };
+
+  const formatCurrency = (amount) => `₹${Number(amount || 0).toFixed(2)}`;
+
+  const getEarningBreakdown = (trip) => {
+    const basePay = Number(trip.riderBasePay || 0);
+    const deliveryFee = Number(trip.riderDeliveryFeeShare || 0);
+    const surgeAmount = Number(trip.riderSurgePay || 0);
+    const incentiveAmount = Number(trip.riderIncentivePay || 0);
+    const totalPayout = Number(
+      trip.riderTotalPayout ||
+      trip.deliveryEarning ||
+      trip.amount ||
+      trip.earningAmount ||
+      0
+    );
+
+    return [
+      { key: 'basePay', label: 'Base Pay', value: basePay },
+      { key: 'deliveryFee', label: 'Delivery Fee', value: deliveryFee },
+      { key: 'surgeAmount', label: 'Surge Amount', value: surgeAmount },
+      { key: 'incentiveAmount', label: 'Incentive', value: incentiveAmount },
+      { key: 'totalPayout', label: 'Total Earned', value: totalPayout, isTotal: true }
+    ].filter((item) => item.isTotal || item.value > 0);
+  };
 
   return (
     <div className="min-h-screen bg-white font-poppins pb-32">
@@ -224,12 +249,21 @@ export const HistoryV2 = () => {
                    const isCompleted = (trip.status || '').toLowerCase() === 'completed';
                    const isCancelled = (trip.status || '').toLowerCase() === 'cancelled';
                    const isPending = !isCompleted && !isCancelled;
-                   const payout = Number(trip.deliveryEarning || trip.amount || trip.earningAmount || 0);
+                   const payout = Number(
+                      trip.riderTotalPayout ||
+                      trip.deliveryEarning ||
+                      trip.amount ||
+                      trip.earningAmount ||
+                      0
+                   );
                    const collection = Number(trip.codCollectedAmount || trip.orderTotal || 0);
                    const isCOD = (trip.paymentMethod || '').toLowerCase() === 'cash' || (trip.paymentMethod || '').toLowerCase() === 'cod';
+                   const breakdown = getEarningBreakdown(trip);
+                   const tripKey = trip.orderId || trip._id || idx;
+                   const isBreakdownOpen = expandedTripId === tripKey;
 
                    return (
-                      <div key={trip.orderId || idx} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm active:scale-[0.99] transition-all">
+                      <div key={tripKey} className="bg-white rounded-[24px] p-5 border border-[#EEF2F6] shadow-[0_10px_30px_rgba(15,23,42,0.06)] active:scale-[0.99] transition-all">
                          <div className="flex justify-between items-start mb-2">
                              <div>
                                 <h4 className="text-base font-bold text-gray-950">{trip.orderId || 'ORDER-ID'}</h4>
@@ -247,20 +281,58 @@ export const HistoryV2 = () => {
                              </span>
                          </div>
 
-                         <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-50">
+                         <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[#F4F7FA]">
                              <div>
                                 <p className="text-[11px] font-medium text-gray-400 mb-1">Time</p>
                                 <p className="text-sm font-bold text-gray-950">{trip.time || '--:--'}</p>
                              </div>
                              <div className="text-center">
                                 <p className="text-[11px] font-medium text-gray-400 mb-1">COD</p>
-                                <p className="text-sm font-bold text-gray-950">₹{collection.toFixed(2)}</p>
+                                <p className="text-sm font-bold text-gray-950">{formatCurrency(collection)}</p>
                              </div>
                              <div className="text-right">
                                 <p className="text-[11px] font-medium text-gray-400 mb-1">Earning</p>
-                                <p className="text-sm font-bold text-gray-950">₹{payout.toFixed(2)}</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedTripId(isBreakdownOpen ? null : tripKey)}
+                                  className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[#F7FFFB] px-2.5 py-1 text-right transition-colors hover:bg-[#ECFDF5]"
+                                  aria-label={isBreakdownOpen ? 'Hide earning breakdown' : 'Show earning breakdown'}
+                                >
+                                  <span className="text-sm font-bold text-gray-950">{formatCurrency(payout)}</span>
+                                  <ChevronDown className={`w-4 h-4 text-[#10B981] transition-transform ${isBreakdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
                              </div>
                          </div>
+                         <AnimatePresence initial={false}>
+                            {isBreakdownOpen && (
+                               <motion.div
+                                 initial={{ opacity: 0, height: 0 }}
+                                 animate={{ opacity: 1, height: 'auto' }}
+                                 exit={{ opacity: 0, height: 0 }}
+                                 className="overflow-hidden"
+                               >
+                                 <div className="mt-4 rounded-[20px] border border-[#D7F5E8] bg-gradient-to-br from-[#F7FFFB] to-[#F0FDF7] p-4">
+                                    <div className="mb-3 flex items-center justify-between">
+                                       <p className="text-xs font-bold uppercase tracking-wider text-[#10B981]">Earning Breakdown</p>
+                                       <p className="text-xs font-medium text-gray-400">Per order payout</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                       {breakdown.map((item) => (
+                                          <div
+                                            key={item.key}
+                                            className={`flex items-center justify-between rounded-xl text-sm ${item.isTotal ? 'mt-3 border-t border-[#D1F2E8] pt-3 font-bold text-gray-950' : 'bg-white/70 px-3 py-2 text-gray-600'}`}
+                                          >
+                                             <span>{item.label}</span>
+                                             <span className={item.isTotal ? 'text-gray-950' : 'text-[#10B981]'}>
+                                                {formatCurrency(item.value)}
+                                             </span>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 </div>
+                               </motion.div>
+                            )}
+                         </AnimatePresence>
                       </div>
                    );
                 })}

@@ -13,7 +13,7 @@ import { useOrders } from "@food/context/OrdersContext"
 import { useLocation as useUserLocation } from "@food/hooks/useLocation"
 import { useZone } from "@food/hooks/useZone"
 import { useLocationSelector } from "@food/components/user/UserLayout"
-import { orderAPI, restaurantAPI, adminAPI, userAPI, API_ENDPOINTS } from "@food/api"
+import { orderAPI, restaurantAPI, userAPI, API_ENDPOINTS } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
 import { initRazorpayPayment } from "@food/utils/razorpay"
 import { toast } from "sonner"
@@ -215,16 +215,6 @@ export default function Cart() {
   const [loadingCoupons, setLoadingCoupons] = useState(false)
   const [userOrderCount, setUserOrderCount] = useState(0)
 
-  // Fee settings from database (used for platform fee and GST fallback only)
-  const [feeSettings, setFeeSettings] = useState({
-    deliveryFee: 25,
-    deliveryFeeRanges: [],
-    freeDeliveryThreshold: 149,
-    platformFee: 5,
-    gstRate: 5,
-  })
-
-
   const availableTimeSlots = useMemo(() => {
     if (!isScheduled || !scheduledDate || !restaurantData) return []
 
@@ -375,7 +365,10 @@ export default function Cart() {
       longitude: selectedAddressCoordinates[0]
     }
     : currentLocation
-  const { zoneId } = useZone(zoneLocation) // Prefer selected/saved address zone
+  const { zoneId } = useZone(zoneLocation, {
+    persistToStorage: false,
+    usePersistedFallback: false,
+  }) // Resolve zone for cart pricing only; do not overwrite global browse zone
   const defaultPayment = getDefaultPaymentMethod()
 
   useEffect(() => {
@@ -870,13 +863,14 @@ export default function Cart() {
           isVeg: item.isVeg !== false
         }))
 
-        const resolvedRestaurantId = restaurantData?.restaurantId || restaurantData?._id || restaurantId || undefined
+        const resolvedRestaurantId = restaurantData?._id || restaurantData?.restaurantId || restaurantId || undefined
         const resolvedCouponCode = appliedCoupon?.code || couponCode || undefined
 
         const response = await orderAPI.calculateOrder({
           items,
           restaurantId: resolvedRestaurantId,
           deliveryAddress: defaultAddress,
+          zoneId: zoneId || undefined,
           couponCode: resolvedCouponCode
         })
 
@@ -892,11 +886,10 @@ export default function Cart() {
           }
         }
       } catch (error) {
-        // Network errors or 404 errors - silently handle, fallback to frontend calculation
+        // Pricing must come from backend fee settings; do not calculate fee defaults in the browser.
         if (error.code !== 'ERR_NETWORK' && error.response?.status !== 404) {
           debugError("Error calculating pricing:", error)
         }
-        // Fallback to frontend calculation if backend fails
         setPricing(null)
       } finally {
         setLoadingPricing(false)
@@ -904,7 +897,7 @@ export default function Cart() {
     }
 
     calculatePricing()
-  }, [cart, defaultAddress, appliedCoupon, couponCode, restaurantId])
+  }, [cart, defaultAddress, appliedCoupon, couponCode, restaurantId, restaurantData, zoneId])
 
   // Fetch wallet balance
   useEffect(() => {
@@ -943,86 +936,16 @@ export default function Cart() {
     fetchOrderCount()
   }, [])
 
-  // Fetch fee settings on mount
-  useEffect(() => {
-    const fetchFeeSettings = async () => {
-      try {
-        const response = await adminAPI.getPublicFeeSettings()
-        if (response.data.success && response.data.data.feeSettings) {
-          setFeeSettings({
-            deliveryFee: response.data.data.feeSettings.deliveryFee ?? 25,
-            deliveryFeeRanges: response.data.data.feeSettings.deliveryFeeRanges || [],
-            freeDeliveryThreshold: response.data.data.feeSettings.freeDeliveryThreshold ?? 149,
-            platformFee: response.data.data.feeSettings.platformFee ?? 5,
-            gstRate: response.data.data.feeSettings.gstRate ?? 5,
-          })
-        }
-      } catch (error) {
-        debugError('Error fetching fee settings:', error)
-        // Keep default values on error
-      }
-    }
-
-    const handleFocus = () => {
-      fetchFeeSettings()
-    }
-
-    fetchFeeSettings()
-    window.addEventListener("focus", handleFocus)
-    const intervalId = setInterval(fetchFeeSettings, 30000)
-
-    return () => {
-      window.removeEventListener("focus", handleFocus)
-      clearInterval(intervalId)
-    }
-  }, [])
-
-  // Use backend pricing if available, otherwise fallback to database fee settings
-  const subtotal = pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0)
-  const fallbackDeliveryFee = (() => {
-    if (appliedCoupon?.freeDelivery) {
-      return 0
-    }
-
-    const ranges = Array.isArray(feeSettings.deliveryFeeRanges) ? [...feeSettings.deliveryFeeRanges] : []
-    if (ranges.length > 0) {
-      const sortedRanges = ranges.sort((a, b) => Number(a.min) - Number(b.min))
-      for (let i = 0; i < sortedRanges.length; i += 1) {
-        const range = sortedRanges[i]
-        const min = Number(range.min)
-        const max = Number(range.max)
-        const fee = Number(range.fee)
-        const isLastRange = i === sortedRanges.length - 1
-        const inRange = isLastRange
-          ? subtotal >= min && subtotal <= max
-          : subtotal >= min && subtotal < max
-
-        if (inRange) return fee
-      }
-
-      return 0
-    }
-
-    if (subtotal >= feeSettings.freeDeliveryThreshold) {
-      return 0
-    }
-
-    return Number(feeSettings.deliveryFee || 0)
-  })()
-  const deliveryFee = pricing?.deliveryFee || fallbackDeliveryFee
-  const deliveryFeeBreakdown = pricing?.deliveryFeeBreakdown || null
-  const hasDistanceDeliveryBreakdown =
-    deliveryFeeBreakdown?.source === "distance" &&
-    Number.isFinite(Number(deliveryFeeBreakdown?.distanceKm))
-  const deliveryFeeBreakdownText = hasDistanceDeliveryBreakdown
-    ? `Distance ${Number(deliveryFeeBreakdown.distanceKm).toFixed(1)} km: ${RUPEE_SYMBOL}${Number(deliveryFeeBreakdown.basePayout || 0).toFixed(0)} base + ${Number(deliveryFeeBreakdown.extraDistanceKm || 0).toFixed(1)} km x ${RUPEE_SYMBOL}${Number(deliveryFeeBreakdown.commissionPerKm || 0).toFixed(0)}`
-    : null
-  const platformFee = pricing?.platformFee || feeSettings.platformFee
+  // Use backend pricing only for fee-related bill values.
+  const isPricingAvailable = Boolean(pricing)
+  const subtotal = pricing?.subtotal ?? cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0)
+  const deliveryFee = Number(pricing?.deliveryFee ?? 0)
+  const platformFee = Number(pricing?.platformFee ?? 0)
   const surgeAmount = Number(pricing?.surgeAmount || 0)
-  const gstCharges = pricing?.tax || Math.round(subtotal * (feeSettings.gstRate / 100))
-  const discount = pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0)
-  const totalBeforeDiscount = subtotal + (deliveryFee === 0 ? (feeSettings.deliveryFee ?? 25) : deliveryFee) + platformFee + gstCharges + surgeAmount
-  const total = pricing?.total || (subtotal + deliveryFee + platformFee + gstCharges + surgeAmount - (pricing?.discount || discount))
+  const gstCharges = Number(pricing?.tax ?? 0)
+  const discount = pricing?.discount ?? (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0)
+  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + surgeAmount
+  const total = pricing?.total ?? (subtotal + deliveryFee + platformFee + gstCharges + surgeAmount - (pricing?.discount ?? discount))
   const savings = pricing?.savings ?? Math.max(0, totalBeforeDiscount - total)
   const selectedPaymentLabel =
     selectedPaymentMethod === "wallet"
@@ -1259,8 +1182,9 @@ export default function Cart() {
 
         const response = await orderAPI.calculateOrder({
           items,
-          restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
+          restaurantId: restaurantData?._id || restaurantData?.restaurantId || restaurantId || null,
           deliveryAddress: defaultAddress,
+          zoneId: zoneId || undefined,
           couponCode: coupon.code
         })
 
@@ -1320,8 +1244,9 @@ export default function Cart() {
 
       const response = await orderAPI.calculateOrder({
         items,
-        restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
+        restaurantId: restaurantData?._id || restaurantData?.restaurantId || restaurantId || null,
         deliveryAddress: defaultAddress,
+        zoneId: zoneId || undefined,
         couponCode: inputCode
       })
 
@@ -1379,8 +1304,9 @@ export default function Cart() {
 
         const response = await orderAPI.calculateOrder({
           items,
-          restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
+          restaurantId: restaurantData?._id || restaurantData?.restaurantId || restaurantId || null,
           deliveryAddress: defaultAddress,
+          zoneId: zoneId || undefined,
           couponCode: null
         })
 
@@ -1419,6 +1345,11 @@ export default function Cart() {
       return
     }
 
+    if (!pricing) {
+      toast.error(loadingPricing ? "Calculating fees. Please wait." : "Unable to calculate fees. Please try again.")
+      return
+    }
+
     setIsPlacingOrder(true)
 
     // Use API_BASE_URL from config (supports both dev and production)
@@ -1430,15 +1361,7 @@ export default function Cart() {
       debugLog("?? Delivery address:", defaultAddress?.label || defaultAddress?.city)
 
       // Ensure couponCode is included in pricing
-      const orderPricing = pricing || {
-        subtotal,
-        deliveryFee,
-        tax: gstCharges,
-        platformFee,
-        discount,
-        total,
-        couponCode: appliedCoupon?.code || null
-      };
+      const orderPricing = { ...pricing };
 
       // Add couponCode if not present but coupon is applied
       if (!orderPricing.couponCode && appliedCoupon?.code) {
@@ -1471,7 +1394,7 @@ export default function Cart() {
 
       // CRITICAL: Validate restaurant ID before placing order
       // Ensure we're using the correct restaurant from restaurantData (most reliable)
-      const finalRestaurantId = restaurantData?.restaurantId || restaurantData?._id || null;
+      const finalRestaurantId = restaurantData?._id || restaurantData?.restaurantId || null;
       const finalRestaurantName = restaurantData?.name || null;
 
       if (!finalRestaurantId) {
@@ -2149,10 +2072,10 @@ export default function Cart() {
 
               {/* Coupon Section */}
               <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden border border-slate-100 dark:border-gray-800 shadow-sm flex flex-col">
-                {deliveryFee === 0 && (
+                {isPricingAvailable && deliveryFee === 0 && (
                   <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dashed border-gray-200 dark:border-gray-800 flex items-center gap-3 bg-[#f4fcf7] dark:bg-green-900/10">
                     <CheckCircle2 className="h-5 w-5 text-green-600 fill-green-600/20" />
-                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">You saved {RUPEE_SYMBOL}{feeSettings.deliveryFee ?? 25} on delivery</span>
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Delivery fee waived</span>
                   </div>
                 )}
 
@@ -2541,18 +2464,13 @@ export default function Cart() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Delivery Fee</span>
-                      <span className={deliveryFee === 0 ? "text-[#EB590E] font-medium" : "text-gray-800 dark:text-gray-200 font-medium"}>
-                        {deliveryFee === 0 ? "FREE" : `${RUPEE_SYMBOL}${deliveryFee.toFixed(2)}`}
+                      <span className={isPricingAvailable && deliveryFee === 0 ? "text-[#EB590E] font-medium" : "text-gray-800 dark:text-gray-200 font-medium"}>
+                        {isPricingAvailable ? (deliveryFee === 0 ? "FREE" : `${RUPEE_SYMBOL}${deliveryFee.toFixed(2)}`) : ""}
                       </span>
                     </div>
-                    {deliveryFeeBreakdownText && (
-                      <div className="text-[11px] text-gray-500 dark:text-gray-400 -mt-1.5 ml-1 border-l-2 border-gray-100 pl-2">
-                        {deliveryFeeBreakdownText}
-                      </div>
-                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
-                      <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{platformFee.toFixed(2)}</span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{isPricingAvailable ? `${RUPEE_SYMBOL}${platformFee.toFixed(2)}` : "-"}</span>
                     </div>
                     {surgeAmount > 0 && (
                       <div className="flex justify-between text-sm">
@@ -2562,7 +2480,7 @@ export default function Cart() {
                     )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">GST and Restaurant Charges</span>
-                      <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{isPricingAvailable ? `${RUPEE_SYMBOL}${gstCharges.toFixed(2)}` : "-"}</span>
                     </div>
                     {discount > 0 && (
                       <div className="flex justify-between text-sm text-[#EB590E] font-medium">
@@ -2630,7 +2548,7 @@ export default function Cart() {
             {/* Place Order Button */}
             <button
               onClick={handlePlaceOrder}
-              disabled={isPlacingOrder || (selectedPaymentMethod === "wallet" && walletBalance < total)}
+              disabled={isPlacingOrder || loadingPricing || (hasSavedAddress && !isPricingAvailable) || (selectedPaymentMethod === "wallet" && walletBalance < total)}
               className="w-full bg-gradient-to-r from-[#EB590E] to-[#E23744] hover:from-[#D94F0C] hover:to-[#CF2834] text-white px-6 h-12 md:h-14 rounded-2xl font-bold shadow-lg shadow-[#EB590E]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between transition-transform active:scale-[0.98]"
             >
               {(selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet" || selectedPaymentMethod === "cash") && (
@@ -2642,8 +2560,12 @@ export default function Cart() {
               <div className="flex items-center gap-1 mx-auto text-sm md:text-lg tracking-wide">
                 {isPlacingOrder
                   ? "Processing..."
-                  : !hasSavedAddress
-                    ? "Select Address"
+                  : loadingPricing
+                    ? "Calculating Fees..."
+                    : !hasSavedAddress
+                      ? "Select Address"
+                    : !isPricingAvailable
+                      ? "Fees Unavailable"
                     : "Place Order"}
                 <div className="flex align-center h-full">
                   <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
@@ -2824,11 +2746,27 @@ export default function Cart() {
                       </svg>
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {defaultAddress?.city || "Your Location"}
+                      {defaultAddress
+                        ? (
+                            defaultAddress?.street ||
+                            defaultAddress?.additionalDetails ||
+                            String(defaultAddress?.formattedAddress || "").split(",")[0]?.trim() ||
+                            String(defaultAddress?.address || "").split(",")[0]?.trim() ||
+                            defaultAddress?.city
+                          )
+                        : "Your Location"}
                     </h2>
                   </div>
                   <p className="text-gray-500 dark:text-gray-400 text-base">
-                    {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Delivery Address") : "Delivery Address"}
+                    {defaultAddress
+                      ? (
+                          formatFullAddress(defaultAddress) ||
+                          defaultAddress?.formattedAddress ||
+                          defaultAddress?.address ||
+                          [defaultAddress?.city, defaultAddress?.state].filter(Boolean).join(", ") ||
+                          "Delivery Address"
+                        )
+                      : "Delivery Address"}
                   </p>
                 </div>
 
