@@ -176,6 +176,10 @@ const setPriceSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    ride_surge_amount: {
+      type: Number,
+      default: 0,
+    },
     outstation_base_price: {
       type: Number,
       default: 0,

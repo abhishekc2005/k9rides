@@ -37,6 +37,10 @@ const zoneSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    ride_surge_enabled: {
+      type: Boolean,
+      default: false,
+    },
     maximum_distance_for_regular_rides: {
       type: Number,
       default: null,

@@ -44,6 +44,14 @@ const paymentTypeOptions = [
   { value: 'wallet', label: 'Wallet' },
 ];
 
+const ALL_ZONES_OPTION = '__ALL_ZONES__';
+
+const getEntityId = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return String(value._id || value.id || '');
+};
+
 const normalizePaymentTypes = (value) => {
   const items = Array.isArray(value)
     ? value
@@ -103,6 +111,7 @@ const initialFormState = {
   price_per_distance: '',
   time_price: '',
   waiting_charge: '',
+  ride_surge_amount: '',
   free_waiting_before: '',
   free_waiting_after: '',
   enable_airport_ride: false,
@@ -200,6 +209,7 @@ const SetPrices = ({ mode }) => {
           admin_commission_for_owner: pData.admin_commission_for_owner ?? 0,
           admin_commission_type_for_owner: String(pData.admin_commission_type_for_owner ?? 1),
           order_number: pData.order_number ?? pData.eta_sequence ?? '',
+          ride_surge_amount: pData.ride_surge_amount ?? '',
           payment_type: normalizePaymentTypes(pData.payment_type).length ? normalizePaymentTypes(pData.payment_type) : ['cash'],
           user_cancellation_fee_type: pData.user_cancellation_fee_type || 'percentage',
           driver_cancellation_fee_type: pData.driver_cancellation_fee_type || 'percentage',
@@ -248,29 +258,79 @@ const SetPrices = ({ mode }) => {
     if(e) e.preventDefault();
     setSaving(true);
     try {
+      const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const basePayload = {
+        ...formData,
+        enable_ride_sharing: false,
+        enable_shared_ride: 0,
+        price_per_seat: 0,
+        shared_price_per_distance: 0,
+        shared_cancel_fee: 0,
+        pricing_scope: 'ride',
+        transport_type: normalizeTransportType(formData.transport_type),
+        payment_type: normalizePaymentTypes(formData.payment_type).length ? normalizePaymentTypes(formData.payment_type) : ['cash'],
+        ride_surge_amount: Number(formData.ride_surge_amount || 0),
+      };
+
+      if (!editingId && formData.zone_id === ALL_ZONES_OPTION) {
+        const availableZones = (Array.isArray(zones) ? zones : []).filter((zone) => getEntityId(zone));
+        if (!availableZones.length) {
+          alert('No zones available to apply this pricing rule.');
+          return;
+        }
+
+        for (const zone of availableZones) {
+          const zoneId = getEntityId(zone);
+          const serviceLocationId = getEntityId(zone.service_location_id || zone.service_location || zone.serviceLocationId);
+          const res = await fetch(`${baseUrl}/types/set-prices`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              ...basePayload,
+              zone_id: zoneId,
+              service_location_id: serviceLocationId || undefined,
+            })
+          });
+          const data = await res.json();
+          if (!data.success) {
+            throw new Error(data.message || `Failed to save pricing for zone ${zone.name || zoneId}`);
+          }
+        }
+
+        navigate('/taxi/admin/pricing/set-price');
+        fetchInitialData();
+        return;
+      }
+
       const method = editingId ? 'PATCH' : 'POST';
       const url = editingId ? `${baseUrl}/types/set-prices/${editingId}` : `${baseUrl}/types/set-prices`;
+      const selectedZone = (Array.isArray(zones) ? zones : []).find((zone) => getEntityId(zone) === String(formData.zone_id || ''));
+      const serviceLocationId = getEntityId(
+        selectedZone?.service_location_id
+        || selectedZone?.service_location
+        || selectedZone?.serviceLocationId
+        || formData.service_location_id
+      );
+
       const res = await fetch(url, {
         method,
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
-          ...formData,
-          enable_ride_sharing: false,
-          enable_shared_ride: 0,
-          price_per_seat: 0,
-          shared_price_per_distance: 0,
-          shared_cancel_fee: 0,
-          pricing_scope: 'ride',
-          transport_type: normalizeTransportType(formData.transport_type),
-          payment_type: normalizePaymentTypes(formData.payment_type).length ? normalizePaymentTypes(formData.payment_type) : ['cash']
+          ...basePayload,
+          service_location_id: serviceLocationId || formData.service_location_id || undefined,
         })
       });
       const data = await res.json();
       if (data.success) {
         navigate('/taxi/admin/pricing/set-price');
         fetchInitialData();
-      } else alert(data.message || "Failed to save");
-    } catch (error) { console.error(error); } finally { setSaving(false); }
+      } else {
+        alert(data.message || "Failed to save");
+      }
+    } catch (error) {
+      console.error(error);
+      alert(error?.message || 'Failed to save');
+    } finally { setSaving(false); }
   };
 
   const filteredPrizes = prizes.filter(p => {
@@ -426,6 +486,7 @@ const SetPrices = ({ mode }) => {
                         <div className="relative">
                            <select required className={inputClass + " appearance-none cursor-pointer"} value={formData.zone_id} onChange={e => setFormData(p=>({...p, zone_id: e.target.value}))}>
                               <option value="">Select Zone</option>
+                              {mode === 'create' && <option value={ALL_ZONES_OPTION}>All Zones</option>}
                               {zones.map(z => <option key={z._id || z.id} value={z._id || z.id}>{z.name}</option>)}
                            </select>
                            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -590,6 +651,10 @@ const SetPrices = ({ mode }) => {
                      <div>
                         <label className={labelClass}>Waiting Charge <span className="text-rose-500">*</span></label>
                         <input type="number" required className={inputClass} placeholder="Enter Waiting Charge" value={formData.waiting_charge} onChange={e => setFormData(p=>({...p, waiting_charge: e.target.value}))} />
+                     </div>
+                     <div>
+                        <label className={labelClass}>Ride Surge Amount <span className="text-rose-500">*</span></label>
+                        <input type="number" min="0" required className={inputClass} placeholder="Enter Ride Surge Amount" value={formData.ride_surge_amount} onChange={e => setFormData(p=>({...p, ride_surge_amount: e.target.value}))} />
                      </div>
                      <div>
                         <label className={labelClass}>Free Waiting Time In Minutes Before Start A Ride <span className="text-rose-500">*</span></label>

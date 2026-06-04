@@ -911,20 +911,20 @@ const VehicleType = ({ mode: propMode }) => {
               ) : null}
             </div>
 
-            <div>
-              <label className={labelClass}>Maximum Weight / Capacity *</label>
-              <input
-                type="number"
-                value={formData.capacity}
+          <div>
+            <label className={labelClass}>Maximum Weight / Capacity *</label>
+            <input
+              type="number"
+              value={formData.capacity}
                 onChange={(e) => updateForm('capacity', e.target.value)}
                 className={inputClass}
-                placeholder="12"
-              />
-            </div>
+              placeholder="12"
+            />
+          </div>
 
-            <div>
-              <label className={labelClass}>Short Description *</label>
-              <input
+          <div>
+            <label className={labelClass}>Short Description *</label>
+            <input
                 type="text"
                 value={formData.short_description}
                 onChange={(e) => updateForm('short_description', e.target.value)}

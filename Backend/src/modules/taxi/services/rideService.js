@@ -6,6 +6,7 @@ import { AdminBusinessSetting } from '../admin/models/AdminBusinessSetting.js';
 import { SetPrice } from '../admin/models/SetPrice.js';
 import { Vehicle } from '../admin/models/Vehicle.js';
 import { Driver } from '../driver/models/Driver.js';
+import { Zone } from '../driver/models/Zone.js';
 import { WalletTransaction } from '../driver/models/WalletTransaction.js';
 import { incrementDriverTodaySummaryForCompletedRide } from '../driver/services/driverTodaySummaryService.js';
 import { applyDriverWalletAdjustment, ensureDriverWalletCanAcceptRide, settleCompletedRideWallet } from '../driver/services/walletService.js';
@@ -952,9 +953,33 @@ export const createRideRecord = async ({
     : pricingNegotiationMode === 'user_increment_only'
       ? bidRideRange.userBidCeilingFare
       : safeFare;
-  const effectiveStartingFare = pricingNegotiationMode === 'user_increment_only'
+  const pickupPoint = normalizePoint(pickupCoords, 'pickupCoords');
+  const surgeZone = normalizedTransportType !== 'delivery'
+    ? await Zone.findOne({
+        ...(resolvedServiceLocationId ? { service_location_id: resolvedServiceLocationId } : {}),
+        active: true,
+        geometry: {
+          $geoIntersects: {
+            $geometry: {
+              type: 'Point',
+              coordinates: pickupPoint,
+            },
+          },
+        },
+      })
+        .select('_id name ride_surge_enabled')
+        .lean()
+    : null;
+  const rideSurgeAmount = Boolean(surgeZone?.ride_surge_enabled)
+    ? Math.max(0, Number(pricingRule?.ride_surge_amount || 0))
+    : 0;
+  const effectiveStartingFareWithoutSurge = pricingNegotiationMode === 'user_increment_only'
     ? effectiveUserMaxBidFare
     : safeFare;
+  const effectiveStartingFare = effectiveStartingFareWithoutSurge + rideSurgeAmount;
+  const effectiveBidFloorFareWithSurge = effectiveBidFloorFare + rideSurgeAmount;
+  const effectiveUserMaxBidFareWithSurge = effectiveUserMaxBidFare + rideSurgeAmount;
+  const effectiveBidCeilingMaxFareWithSurge = effectiveBidCeilingMaxFare + rideSurgeAmount;
   const nextFareIncreaseAt = pricingNegotiationMode === 'user_increment_only'
     ? new Date(Date.now() + fareIncreaseWaitMinutes * 60 * 1000)
     : null;
@@ -965,6 +990,11 @@ export const createRideRecord = async ({
     waiting_charge: Number(pricingRule?.waiting_charge ?? 0),
     free_waiting_before: Number(pricingRule?.free_waiting_before ?? 0),
     free_waiting_after: Number(pricingRule?.free_waiting_after ?? 0),
+    ride_surge_enabled: Boolean(surgeZone?.ride_surge_enabled) && rideSurgeAmount > 0,
+    ride_surge_amount: rideSurgeAmount,
+    fare_before_surge: effectiveStartingFareWithoutSurge,
+    surge_zone_id: surgeZone?._id || null,
+    surge_zone_name: surgeZone?.name || '',
     allowed_payment_methods: allowedPaymentMethods,
     resolvedAt: pricingRule ? new Date() : null,
   };
@@ -995,7 +1025,7 @@ export const createRideRecord = async ({
         providerMode: 'subscription_wallet',
         source: 'user_subscription',
         status: 'paid',
-        amount: safeFare,
+        amount: effectiveStartingFare,
         currency: 'INR',
         linkUrl: '',
         paidAt: new Date(),
@@ -1011,7 +1041,7 @@ export const createRideRecord = async ({
         planName: applicableSubscription.name || '',
         vehicleTypeId: applicableSubscription.vehicle_type_id || primaryVehicleTypeId,
         benefitType: subscriptionBenefitType,
-        fareCovered: safeFare,
+        fareCovered: effectiveStartingFare,
         ridesUsedBefore: subscriptionRidesUsed,
         ridesRemainingBefore: subscriptionRidesRemaining,
       }
@@ -1038,14 +1068,14 @@ export const createRideRecord = async ({
       dropLocation: toPoint(dropCoords, 'drop'),
       dropAddress: normalizeAddress(dropAddress),
       fare: effectiveStartingFare,
-      baseFare: safeFare,
+      baseFare: effectiveStartingFare,
       bookingMode: effectiveBookingMode,
       pricingNegotiationMode,
       biddingStatus: pricingNegotiationMode === 'driver_bid' ? 'open' : 'none',
       bidStepAmount: effectiveBidStepAmount,
-      bidFloorFare: effectiveBidFloorFare,
-      userMaxBidFare: effectiveUserMaxBidFare,
-      bidCeilingMaxFare: effectiveBidCeilingMaxFare,
+      bidFloorFare: effectiveBidFloorFareWithSurge,
+      userMaxBidFare: effectiveUserMaxBidFareWithSurge,
+      bidCeilingMaxFare: effectiveBidCeilingMaxFareWithSurge,
       fareIncreaseWaitMinutes: pricingNegotiationMode === 'user_increment_only' ? fareIncreaseWaitMinutes : 0,
       nextFareIncreaseAt,
       estimatedDistanceMeters: safeEstimatedDistanceMeters,
@@ -1093,14 +1123,14 @@ export const createRideRecord = async ({
             dropLocation: toPoint(dropCoords, 'drop'),
             dropAddress: normalizeAddress(dropAddress),
             fare: effectiveStartingFare,
-            baseFare: safeFare,
+            baseFare: effectiveStartingFare,
             bookingMode: effectiveBookingMode,
             pricingNegotiationMode,
             biddingStatus: pricingNegotiationMode === 'driver_bid' ? 'open' : 'none',
             bidStepAmount: effectiveBidStepAmount,
-            bidFloorFare: effectiveBidFloorFare,
-            userMaxBidFare: effectiveUserMaxBidFare,
-            bidCeilingMaxFare: effectiveBidCeilingMaxFare,
+            bidFloorFare: effectiveBidFloorFareWithSurge,
+            userMaxBidFare: effectiveUserMaxBidFareWithSurge,
+            bidCeilingMaxFare: effectiveBidCeilingMaxFareWithSurge,
             fareIncreaseWaitMinutes: pricingNegotiationMode === 'user_increment_only' ? fareIncreaseWaitMinutes : 0,
             nextFareIncreaseAt,
             estimatedDistanceMeters: safeEstimatedDistanceMeters,
@@ -1135,6 +1165,7 @@ export const createRideRecord = async ({
         fare: safeFare,
         service_location_id,
         transport_type: transport_type || 'taxi',
+        surgeAmount: rideSurgeAmount,
       });
 
       await session.commitTransaction();
@@ -1256,6 +1287,11 @@ export const serializeRideRealtime = (ride) => ({
         waiting_charge: Number(ride.pricingSnapshot.waiting_charge ?? 0),
         free_waiting_before: Number(ride.pricingSnapshot.free_waiting_before ?? 0),
         free_waiting_after: Number(ride.pricingSnapshot.free_waiting_after ?? 0),
+        ride_surge_enabled: Boolean(ride.pricingSnapshot.ride_surge_enabled),
+        ride_surge_amount: Number(ride.pricingSnapshot.ride_surge_amount ?? 0),
+        fare_before_surge: Number(ride.pricingSnapshot.fare_before_surge ?? 0),
+        surge_zone_id: ride.pricingSnapshot.surge_zone_id ? String(ride.pricingSnapshot.surge_zone_id) : null,
+        surge_zone_name: ride.pricingSnapshot.surge_zone_name || '',
         allowed_payment_methods: normalizeAllowedRidePaymentMethods(ride.pricingSnapshot.allowed_payment_methods),
         resolvedAt: ride.pricingSnapshot.resolvedAt || null,
       }

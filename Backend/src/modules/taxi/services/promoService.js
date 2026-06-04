@@ -194,6 +194,7 @@ export const applyPromoToRideInTransaction = async ({
   fare,
   service_location_id,
   transport_type = 'taxi',
+  surgeAmount = 0,
 }) => {
   const normalizedCode = normalizePromoCode(code);
   if (!normalizedCode) {
@@ -344,7 +345,7 @@ export const applyPromoToRideInTransaction = async ({
     transport_type: transportType,
     applied_at: new Date(),
   };
-  ride.fare = breakdown.fare_after_discount;
+  ride.fare = breakdown.fare_after_discount + Math.max(0, Number(surgeAmount || 0));
 
   await ride.save({ session });
 

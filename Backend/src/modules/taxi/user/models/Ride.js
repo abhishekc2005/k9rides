@@ -465,6 +465,30 @@ const rideSchema = new mongoose.Schema(
         default: 0,
         min: 0,
       },
+      ride_surge_enabled: {
+        type: Boolean,
+        default: false,
+      },
+      ride_surge_amount: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      fare_before_surge: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      surge_zone_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TaxiZone',
+        default: null,
+      },
+      surge_zone_name: {
+        type: String,
+        default: '',
+        trim: true,
+      },
       allowed_payment_methods: {
         type: [String],
         default: ['cash', 'online'],

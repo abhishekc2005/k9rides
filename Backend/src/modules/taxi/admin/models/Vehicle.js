@@ -71,6 +71,11 @@ const vehicleSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    ride_surge_amount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     size: {
       type: String,
       default: '',

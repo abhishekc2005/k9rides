@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import { FoodOrder, FoodSettings } from '../models/order.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
+import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
+import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
 import { logger } from '../../../../utils/logger.js';
 import { config } from '../../../../config/env.js';
@@ -93,6 +95,95 @@ async function listNearbyOnlineDeliveryPartners(
   return { partners: final };
 }
 
+async function filterPartnersByCodCashLimit(partners = [], order = null) {
+  if (!Array.isArray(partners) || partners.length === 0) return [];
+
+  const paymentMethod = String(order?.payment?.method || '').trim().toLowerCase();
+  if (paymentMethod !== 'cash') {
+    return partners;
+  }
+
+  const cashLimitSettings = await getDeliveryCashLimitSettings();
+  const totalCashLimit = Number(cashLimitSettings?.deliveryCashLimit) || 0;
+  if (totalCashLimit <= 0) {
+    return partners;
+  }
+
+  const orderCashImpact = Math.max(0, Number(order?.pricing?.total) || 0);
+
+  const partnerIds = partners
+    .map((partner) => partner?.partnerId)
+    .filter((partnerId) => mongoose.Types.ObjectId.isValid(partnerId))
+    .map((partnerId) => new mongoose.Types.ObjectId(partnerId));
+
+  if (partnerIds.length === 0) {
+    return partners;
+  }
+
+  const [cashCollectedAgg, cashDepositsAgg] = await Promise.all([
+    FoodOrder.aggregate([
+      {
+        $match: {
+          'dispatch.deliveryPartnerId': { $in: partnerIds },
+          orderStatus: 'delivered',
+          'payment.method': 'cash',
+        },
+      },
+      {
+        $group: {
+          _id: '$dispatch.deliveryPartnerId',
+          cashCollected: { $sum: { $ifNull: ['$pricing.total', 0] } },
+        },
+      },
+    ]),
+    FoodDeliveryCashDeposit.aggregate([
+      {
+        $match: {
+          deliveryPartnerId: { $in: partnerIds },
+          status: 'Completed',
+        },
+      },
+      {
+        $group: {
+          _id: '$deliveryPartnerId',
+          depositedCash: { $sum: { $ifNull: ['$amount', 0] } },
+        },
+      },
+    ]),
+  ]);
+
+  const cashCollectedMap = new Map(
+    (cashCollectedAgg || []).map((entry) => [
+      String(entry?._id || ''),
+      Number(entry?.cashCollected) || 0,
+    ]),
+  );
+  const cashDepositsMap = new Map(
+    (cashDepositsAgg || []).map((entry) => [
+      String(entry?._id || ''),
+      Number(entry?.depositedCash) || 0,
+    ]),
+  );
+
+  const eligiblePartners = partners.filter((partner) => {
+    const partnerId = String(partner?.partnerId || '');
+    const cashCollected = cashCollectedMap.get(partnerId) || 0;
+    const depositedCash = cashDepositsMap.get(partnerId) || 0;
+    const cashInHand = Math.max(0, cashCollected - depositedCash);
+    const projectedCashInHand = cashInHand + orderCashImpact;
+    return projectedCashInHand <= totalCashLimit;
+  });
+
+  const skippedCount = partners.length - eligiblePartners.length;
+  if (skippedCount > 0) {
+    logger.info(
+      `COD cash-limit filter skipped ${skippedCount} delivery partner(s) for order ${order?._id || ''}.`,
+    );
+  }
+
+  return eligiblePartners;
+}
+
 export async function getDispatchSettings() {
   return { dispatchMode: "auto" };
 }
@@ -182,16 +273,17 @@ export async function tryAutoAssign(orderId, options = {}) {
       }
     }
 
-    const eligible = partners.filter(p => !offeredIds.includes(p.partnerId.toString()));
+    const codEligiblePartners = await filterPartnersByCodCashLimit(partners, order);
+    const eligible = codEligiblePartners.filter(p => !offeredIds.includes(p.partnerId.toString()));
 
     if (eligible.length === 0) {
       logger.info(`tryAutoAssign: No NEW eligible partners in ${maxKm}km for order ${order._id}. Restarting hunt...`);
       
       // If we ran out of new eligible partners, we might want to re-offer to everyone (Phase 2 style)
       const io = getIO();
-      if (io && partners.length > 0) {
+      if (io && codEligiblePartners.length > 0) {
         const payload = buildDeliverySocketPayload(order, order.restaurantId);
-        for (const p of partners) {
+        for (const p of codEligiblePartners) {
           const roomName = rooms.delivery(p.partnerId);
           io.to(roomName).emit('new_order_available', { ...payload, pickupDistanceKm: p.distanceKm });
         }

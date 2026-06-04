@@ -315,7 +315,10 @@ const DriverDetails = () => {
   const wallet = profile?.wallet || {};
   const requests = profile?.requests || [];
   const withdrawals = profile?.withdrawals || [];
-  const backRoute = location.state?.from || '/admin/drivers';
+  const normalizedBackRoute = typeof location.state?.from === 'string' ? location.state.from.trim() : '';
+  const backRoute = normalizedBackRoute.startsWith('/taxi/admin/')
+    ? normalizedBackRoute
+    : '/taxi/admin/drivers/pending';
   const onboardingVehicle = profile?.onboarding?.vehicle || {};
   const vehicleFieldSummary = useMemo(() => ([
     {

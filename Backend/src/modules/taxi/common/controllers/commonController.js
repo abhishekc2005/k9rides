@@ -1,6 +1,10 @@
 import { asyncHandler } from '../../../../utils/asyncHandler.js';
 import { uploadDataUrlToCloudinary, uploadBufferToCloudinary } from '../../../../utils/cloudinaryUpload.js';
 import { env } from '../../../../config/env.js';
+import { AdminAppSetting } from '../../admin/models/AdminAppSetting.js';
+import { AdminBusinessSetting } from '../../admin/models/AdminBusinessSetting.js';
+import { createDefaultAppSettings } from '../../admin/data/defaultAppSettings.js';
+import { createDefaultBusinessSettings } from '../../admin/data/defaultBusinessSettings.js';
 import { getReferralSettings, getReferralTranslationContent } from '../../admin/services/adminService.js';
 import { getPublicActivePaymentGateway } from '../../services/paymentGatewayService.js';
 
@@ -64,6 +68,56 @@ export const getPaymentGatewayConfig = asyncHandler(async (_req, res) => {
     return res.json({
         success: true,
         data,
+    });
+});
+
+export const getPublicSettingsBootstrap = asyncHandler(async (_req, res) => {
+    const [businessSettings, appSettings, paymentGateway] = await Promise.all([
+        AdminBusinessSetting.findOne({ scope: 'default' })
+            .select('general customization transport_ride bid_ride')
+            .lean(),
+        AdminAppSetting.findOne({ scope: 'default' })
+            .select('wallet_setting tip_setting country')
+            .lean(),
+        getPublicActivePaymentGateway(),
+    ]);
+
+    const defaultBusinessSettings = createDefaultBusinessSettings();
+    const defaultAppSettings = createDefaultAppSettings();
+
+    return res.json({
+        success: true,
+        data: {
+            general: {
+                ...(defaultBusinessSettings.general || {}),
+                ...(businessSettings?.general || {}),
+            },
+            customization: {
+                ...(defaultBusinessSettings.customization || {}),
+                ...(businessSettings?.customization || {}),
+            },
+            transportRide: {
+                ...(defaultBusinessSettings.transport_ride || {}),
+                ...(businessSettings?.transport_ride || {}),
+            },
+            bidRide: {
+                ...(defaultBusinessSettings.bid_ride || {}),
+                ...(businessSettings?.bid_ride || {}),
+            },
+            wallet: {
+                ...(defaultAppSettings.wallet_setting || {}),
+                ...(appSettings?.wallet_setting || {}),
+            },
+            tip: {
+                ...(defaultAppSettings.tip_setting || {}),
+                ...(appSettings?.tip_setting || {}),
+            },
+            country: {
+                ...(defaultAppSettings.country || {}),
+                ...(appSettings?.country || {}),
+            },
+            paymentGateway: paymentGateway?.activeGateway || null,
+        },
     });
 });
 

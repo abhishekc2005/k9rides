@@ -4,11 +4,8 @@ import {
     Car, 
     ChevronRight, 
     MapPin, 
-    Zap, 
-    Package,
     ShieldCheck,
-    Info,
-    CheckCircle2
+    Info
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -267,11 +264,6 @@ const StepVehicle = () => {
             ? ['locationId', 'companyName', 'companyAddress', 'city', 'postalCode', 'taxNumber'].filter((key) => isFieldRequired(key, true))
             : ['locationId', 'vehicleTypeId', 'make', 'model', 'year', 'number', 'color'].filter((key) => isFieldRequired(key, true));
 
-        if (!isOwner && isFieldRequired('serviceCategories', true) && formData.serviceCategories.length === 0) {
-            setError('Please select at least one service category');
-            return;
-        }
-
         const missingCustomField = visibleCustomVehicleFields.find(
             (field) => field?.is_required !== false && !isFilled(formData.customFields?.[field.field_key]),
         );
@@ -356,15 +348,7 @@ const StepVehicle = () => {
         }
     };
 
-    const registerTypes = [
-        { id: 'taxi', label: 'Taxi', icon: <Car size={18} />, color: 'emerald' },
-        { id: 'outstation', label: 'Outstation', icon: <MapPin size={18} />, color: 'sky' },
-        { id: 'delivery', label: 'Delivery', icon: <Package size={18} />, color: 'amber' },
-        { id: 'pooling', label: 'Pooling', icon: <Zap size={18} />, color: 'indigo' }
-    ];
-
     const locationField = getFieldConfig('locationId', { name: 'Operating City' });
-    const serviceCategoryField = getFieldConfig('serviceCategories', { name: 'Service Category', help_text: 'Selection Required' });
     const vehicleTypeField = getFieldConfig('vehicleTypeId', { name: 'Vehicle Type', help_text: 'Select the type of vehicle you drive.' });
     const companyNameField = getFieldConfig('companyName', { name: 'Company Name', placeholder: 'Legal Company Name' });
     const companyAddressField = getFieldConfig('companyAddress', { name: 'Company Address', placeholder: 'Business Address' });
@@ -389,7 +373,6 @@ const StepVehicle = () => {
         ].every(Boolean)
         : [
             !isFieldRequired('locationId', true) || isFilled(formData.locationId),
-            !isFieldRequired('serviceCategories', true) || isFilled(formData.serviceCategories),
             !isFieldRequired('vehicleTypeId', true) || isFilled(formData.vehicleTypeId),
             !isFieldRequired('make', true) || isFilled(formData.make),
             !isFieldRequired('model', true) || isFilled(formData.model),
@@ -440,59 +423,6 @@ const StepVehicle = () => {
                 </header>
 
                 <div className="space-y-5">
-                    {!isOwner && shouldShowField('serviceCategories', true) && (
-                        <section className="space-y-4 rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
-                            <div className="space-y-1 px-1">
-                                <h2 className="text-lg font-black tracking-tight text-slate-900">{serviceCategoryField.name}</h2>
-                                <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest opacity-60">
-                                    {serviceCategoryField.help_text || 'Selection Required'}
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                {registerTypes.map((item) => (
-                                    <button
-                                        key={item.id}
-                                        type="button"
-                                        onClick={() => setFormData((previous) => {
-                                            const exists = previous.serviceCategories.includes(item.id);
-                                            const nextServiceCategories = exists
-                                                ? previous.serviceCategories.filter((value) => value !== item.id)
-                                                : [...previous.serviceCategories, item.id];
-
-                                            return {
-                                                ...previous,
-                                                serviceCategories: nextServiceCategories,
-                                                registerFor: getPrimaryRegisterFor(nextServiceCategories, previous.registerFor),
-                                            };
-                                        })}
-                                        className={`flex items-center gap-2.5 px-3 py-3 rounded-2xl border-2 transition-all group relative overflow-hidden ${
-                                            formData.serviceCategories.includes(item.id)
-                                            ? 'bg-slate-900 border-slate-900 text-white' 
-                                            : 'bg-slate-50 border-slate-50 text-slate-600 hover:border-slate-200'
-                                        }`}
-                                    >
-                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
-                                            formData.serviceCategories.includes(item.id) ? 'bg-white text-slate-900' : 'bg-white shadow-sm text-slate-400'
-                                        }`}>
-                                            {item.icon}
-                                        </div>
-                                        <span className="text-[11px] font-black uppercase tracking-widest">{item.label}</span>
-                                        {formData.serviceCategories.includes(item.id) && (
-                                             <div className="absolute top-1.5 right-1.5">
-                                                <CheckCircle2 size={12} className="text-white" strokeWidth={3} />
-                                             </div>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                            {isFieldRequired('serviceCategories', true) && formData.serviceCategories.length === 0 && (
-                                <div className="rounded-2xl border border-amber-50 bg-amber-50/30 px-4 py-3 text-[10px] font-black text-amber-600 uppercase tracking-widest text-center">
-                                    Select at least one category
-                                </div>
-                            )}
-                        </section>
-                    )}
-
                     <section className="space-y-5 rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-[0_10px_40px_rgba(0,0,0,0.04)]">
                         {shouldShowField('locationId', true) ? (
                         <div className="group rounded-[1.8rem] border-2 transition-all p-4 border-slate-50 bg-slate-50 focus-within:border-slate-900/10 focus-within:bg-white focus-within:shadow-xl focus-within:shadow-slate-900/5">

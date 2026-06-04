@@ -83,6 +83,7 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
     peak_zone_selection_duration: '',
     peak_zone_duration: '',
     peak_zone_surge_percentage: '',
+    ride_surge_enabled: false,
     maximum_distance_for_regular_rides: '',
     maximum_distance_for_outstation_rides: '',
     status: 'active'
@@ -321,6 +322,7 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
       peak_zone_selection_duration: '',
       peak_zone_duration: '',
       peak_zone_surge_percentage: '',
+      ride_surge_enabled: false,
       maximum_distance_for_regular_rides: '',
       maximum_distance_for_outstation_rides: '',
       status: 'active'
@@ -375,6 +377,7 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
       peak_zone_selection_duration: zone.peak_zone_selection_duration || '',
       peak_zone_duration: zone.peak_zone_duration || '',
       peak_zone_surge_percentage: zone.peak_zone_surge_percentage || '',
+      ride_surge_enabled: zone.ride_surge_enabled === true,
       maximum_distance_for_regular_rides: zone.maximum_distance_for_regular_rides || '',
       maximum_distance_for_outstation_rides: zone.maximum_distance_for_outstation_rides || '',
       status: zone.active ? 'active' : 'inactive'
@@ -622,6 +625,44 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
                             <option key={sl._id || sl.id} value={sl._id || sl.id}>{sl.name || sl.service_location_name}</option>
                           ))}
                         </select>
+                      </div>
+
+                      <div className={`rounded-[26px] border p-5 transition-all ${
+                        formData.ride_surge_enabled
+                          ? 'border-emerald-200 bg-[linear-gradient(135deg,rgba(236,253,245,0.92),rgba(255,255,255,1))] shadow-[0_12px_30px_rgba(15,118,110,0.08)]'
+                          : 'border-slate-200 bg-white'
+                      }`}>
+                        <div className="flex items-start gap-4">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0 flex-1 pr-1">
+                                <p className="text-[15px] font-semibold leading-6 text-slate-900">
+                                  Zone Ride Surge
+                                </p>
+                                <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">
+                                  Add vehicle surge for rides picked up in this zone.
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                aria-pressed={formData.ride_surge_enabled}
+                                onClick={() => setFormData((prev) => ({ ...prev, ride_surge_enabled: !prev.ride_surge_enabled }))}
+                                className={`relative inline-flex h-8 w-14 shrink-0 self-start rounded-full border transition-all duration-200 ${
+                                  formData.ride_surge_enabled
+                                    ? 'border-emerald-500 bg-emerald-500 shadow-[0_10px_24px_rgba(16,185,129,0.24)]'
+                                    : 'border-slate-200 bg-slate-200'
+                                }`}
+                              >
+                                <span
+                                  className={`inline-block h-6 w-6 rounded-full bg-white shadow-[0_3px_8px_rgba(15,23,42,0.18)] transition-transform duration-200 ${
+                                    formData.ride_surge_enabled ? 'translate-x-7' : 'translate-x-1'
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
                       <div>

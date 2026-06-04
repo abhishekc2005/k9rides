@@ -315,9 +315,11 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
     }
 
     const fare = normalizeAmount(ride.fare || 0, 'fare');
+    const surgeAmount = Math.max(0, normalizeAmount(ride?.pricingSnapshot?.ride_surge_amount || 0, 'surgeAmount'));
+    const commissionableFare = Math.max(0, normalizeAmount(fare - surgeAmount, 'commissionableFare'));
     const commissionConfig = await resolveCommissionConfigForRide(ride, session);
     const commissionAmount = computeCommissionAmount({
-      fare,
+      fare: commissionableFare,
       type: commissionConfig.type,
       value: commissionConfig.value,
     });
@@ -330,6 +332,7 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
     ride.commissionAmount = commissionAmount;
     ride.driverEarnings = driverEarnings;
     ride.pricingSnapshot = {
+      ...(ride.pricingSnapshot?.toObject ? ride.pricingSnapshot.toObject() : ride.pricingSnapshot || {}),
       setPriceId: ride.pricingSnapshot?.setPriceId || commissionConfig.setPriceId || null,
       admin_commission_type_from_driver: Number(commissionConfig.type ?? ride.pricingSnapshot?.admin_commission_type_from_driver ?? 1),
       admin_commission_from_driver: Number(commissionConfig.value ?? ride.pricingSnapshot?.admin_commission_from_driver ?? 0),
@@ -352,6 +355,8 @@ export const settleCompletedRideWallet = async ({ rideId }) => {
         : 'Driver earning credited for online ride',
       metadata: {
         fare,
+        surgeAmount,
+        commissionableFare,
         commissionAmount,
         driverEarnings,
         paymentMethod,

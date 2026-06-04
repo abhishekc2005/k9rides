@@ -1614,6 +1614,7 @@ const serializeZone = (zone) => ({
   peak_zone_selection_duration: zone.peak_zone_selection_duration,
   peak_zone_duration: zone.peak_zone_duration,
   peak_zone_surge_percentage: zone.peak_zone_surge_percentage,
+  ride_surge_enabled: Boolean(zone.ride_surge_enabled),
   maximum_distance_for_regular_rides: zone.maximum_distance_for_regular_rides,
   maximum_distance_for_outstation_rides: zone.maximum_distance_for_outstation_rides,
   active: zone.active !== false,
@@ -1735,6 +1736,7 @@ const serializeSetPrice = (item) => ({
   price_per_distance: item.price_per_distance,
   time_price: item.time_price,
   waiting_charge: item.waiting_charge,
+  ride_surge_amount: item.ride_surge_amount ?? 0,
   outstation_base_price: item.outstation_base_price ?? 0,
   outstation_base_distance: item.outstation_base_distance ?? 0,
   outstation_price_per_distance: item.outstation_price_per_distance ?? 0,
@@ -5652,6 +5654,7 @@ export const listVehicleTypes = async (queryParams = {}) => {
     icon: item.map_icon || item.icon || item.image || '',
     map_icon: item.map_icon || item.icon || item.image || '',
     delivery_category: item.delivery_category || '',
+    ride_surge_amount: Number(item.ride_surge_amount || 0),
     delivery_distance_pricing: normalizeDeliveryDistancePricing(item.delivery_distance_pricing),
   }));
 
@@ -5679,6 +5682,7 @@ export const listVehicleCatalog = async () => {
     icon: item.map_icon || item.icon || item.image || '',
     map_icon: item.map_icon || item.icon || item.image || '',
     delivery_category: item.delivery_category || '',
+    ride_surge_amount: Number(item.ride_surge_amount || 0),
     delivery_distance_pricing: normalizeDeliveryDistancePricing(item.delivery_distance_pricing),
     supported_vehicles: Array.isArray(item.supported_other_vehicle_types)
       ? item.supported_other_vehicle_types.map((v) => String(v)).join(',')
@@ -5709,7 +5713,7 @@ export const listPublicVehicleCatalog = async () => {
   }
 
   const items = await Vehicle.find()
-    .select('name short_description description transport_type dispatch_type icon_types delivery_category delivery_distance_pricing capacity image icon map_icon status active')
+    .select('name short_description description transport_type dispatch_type icon_types delivery_category delivery_distance_pricing capacity ride_surge_amount image icon map_icon status active')
     .sort({ createdAt: -1 })
     .lean();
 
@@ -5725,6 +5729,7 @@ export const listPublicVehicleCatalog = async () => {
     delivery_category: item.delivery_category || '',
     delivery_distance_pricing: normalizeDeliveryDistancePricing(item.delivery_distance_pricing),
     capacity: Number(item.capacity || 0),
+    ride_surge_amount: Number(item.ride_surge_amount || 0),
     image: item.image || '',
     map_icon: item.map_icon || item.icon || item.image || '',
     status: item.status ?? 1,
@@ -5787,6 +5792,7 @@ export const createVehicleType = async (payload) => {
     dispatch_type: payload.dispatch_type || 'normal',
     icon_types: payload.icon_types || 'car',
     capacity: Number(payload.capacity || 0),
+    ride_surge_amount: Math.max(0, Number(payload.ride_surge_amount || 0)),
     size: payload.size ?? '',
     is_taxi: payload.is_taxi || transportType,
     is_accept_share_ride: Number(payload.is_accept_share_ride || 0) ? 1 : 0,
@@ -5848,6 +5854,9 @@ export const updateVehicleType = async (id, payload) => {
   }
   if (payload.capacity !== undefined) {
     vehicle.capacity = Number(payload.capacity || 0);
+  }
+  if (payload.ride_surge_amount !== undefined) {
+    vehicle.ride_surge_amount = Math.max(0, Number(payload.ride_surge_amount || 0));
   }
   if (payload.size !== undefined) {
     vehicle.size = payload.size ?? '';
@@ -6113,6 +6122,7 @@ export const createSetPrice = async (payload, currentAdmin = null) => {
     price_per_distance: Number(payload.price_per_distance ?? 0),
     time_price: Number(payload.time_price ?? 0),
     waiting_charge: Number(payload.waiting_charge ?? 0),
+    ride_surge_amount: Number(payload.ride_surge_amount ?? 0),
     outstation_base_price: Number(payload.outstation_base_price ?? 0),
     outstation_base_distance: Number(payload.outstation_base_distance ?? 0),
     outstation_price_per_distance: Number(payload.outstation_price_per_distance ?? 0),
@@ -6161,7 +6171,7 @@ export const updateSetPrice = async (id, payload, currentAdmin = null) => {
     'service_tax', 'airport_surge', 'support_airport_fee', 'support_outstation',
     'enable_airport_ride', 'enable_outstation_ride',
     'base_price', 'base_distance', 'price_per_distance', 'time_price',
-    'waiting_charge', 'outstation_base_price', 'outstation_base_distance',
+    'waiting_charge', 'ride_surge_amount', 'outstation_base_price', 'outstation_base_distance',
     'outstation_price_per_distance', 'outstation_time_price',
     'free_waiting_before', 'free_waiting_after',
     'enable_shared_ride', 'enable_ride_sharing', 'price_per_seat',
@@ -7424,6 +7434,7 @@ export const getDashboardData = async () => {
       peak_zone_selection_duration: toNullableNumber(payload.peak_zone_selection_duration),
       peak_zone_duration: toNullableNumber(payload.peak_zone_duration),
       peak_zone_surge_percentage: toNullableNumber(payload.peak_zone_surge_percentage),
+      ride_surge_enabled: payload.ride_surge_enabled === true,
       maximum_distance_for_regular_rides: toNullableNumber(payload.maximum_distance_for_regular_rides),
       maximum_distance_for_outstation_rides: toNullableNumber(payload.maximum_distance_for_outstation_rides),
       active: payload.status ? payload.status === 'active' : true,
@@ -7475,6 +7486,9 @@ export const getDashboardData = async () => {
     }
     if (payload.peak_zone_surge_percentage !== undefined) {
       zone.peak_zone_surge_percentage = toNullableNumber(payload.peak_zone_surge_percentage);
+    }
+    if (payload.ride_surge_enabled !== undefined) {
+      zone.ride_surge_enabled = payload.ride_surge_enabled === true;
     }
     if (payload.maximum_distance_for_regular_rides !== undefined) {
       zone.maximum_distance_for_regular_rides = toNullableNumber(payload.maximum_distance_for_regular_rides);

@@ -11,6 +11,7 @@ const DEFAULT_COUNTRY_CODE = "+91"
 
 export default function RestaurantSignup() {
   const navigate = useNavigate()
+  const companyName = useCompanyName()
   const [formData, setFormData] = useState({
     phone: "",
     countryCode: "+91",
@@ -21,7 +22,8 @@ export default function RestaurantSignup() {
     name: "",
   })
   const [isLoading, setIsLoading] = useState(false)
-  const [apiError, setApiError] = useState  const [keyboardInset, setKeyboardInset] = useState(0)
+  const [apiError, setApiError] = useState("")
+  const [keyboardInset, setKeyboardInset] = useState(0)
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.visualViewport) return undefined

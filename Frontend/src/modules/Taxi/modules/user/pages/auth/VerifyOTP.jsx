@@ -195,6 +195,7 @@ const VerifyOTP = () => {
 
   const isFilled = otp.every((digit) => digit !== '');
 
+  return (
     <AuthLayout
       title=""
       subtitle=""

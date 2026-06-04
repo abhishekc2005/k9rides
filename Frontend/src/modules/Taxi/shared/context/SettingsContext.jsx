@@ -146,29 +146,15 @@ export const SettingsProvider = ({ children }) => {
 
   const fetchSettings = async () => {
     try {
-      const [genRes, cusRes, transportRideRes, bidRideRes, paymentGatewayRes] = await Promise.allSettled([
-        api.get('/admin/general-settings/general'),
-        api.get('/admin/general-settings/customize'),
-        api.get('/admin/general-settings/transport-ride'),
-        api.get('/admin/general-settings/bid-ride'),
-        api.get('/common/payment-gateway'),
-      ]);
+      const bootstrapResponse = await api.get('/common/settings');
+      const bootstrapData = bootstrapResponse?.data?.data || bootstrapResponse?.data || {};
 
       setSettings({
-        general: genRes.status === 'fulfilled' ? (genRes.value.data?.settings || {}) : {},
-        customization: cusRes.status === 'fulfilled' ? (cusRes.value.data?.settings || {}) : {},
-        transportRide:
-          transportRideRes.status === 'fulfilled'
-            ? (transportRideRes.value.data?.settings || {})
-            : { enable_bus_service: '0' },
-        bidRide:
-          bidRideRes.status === 'fulfilled'
-            ? (bidRideRes.value.data?.settings || DEFAULT_SETTINGS_CONTEXT.settings.bidRide)
-            : DEFAULT_SETTINGS_CONTEXT.settings.bidRide,
-        paymentGateway:
-          paymentGatewayRes.status === 'fulfilled'
-            ? (paymentGatewayRes.value.data?.activeGateway || null)
-            : null,
+        general: bootstrapData.general || {},
+        customization: bootstrapData.customization || {},
+        transportRide: bootstrapData.transportRide || { enable_bus_service: '0' },
+        bidRide: bootstrapData.bidRide || DEFAULT_SETTINGS_CONTEXT.settings.bidRide,
+        paymentGateway: bootstrapData.paymentGateway || null,
       });
     } catch (err) {
       console.error('Failed to fetch settings:', err);
