@@ -10,6 +10,7 @@ import {
   Printer,
   Volume2,
   VolumeX,
+  Phone,
   ChevronDown,
   ChevronUp,
   Minus,
@@ -2740,6 +2741,22 @@ function OrderCard({
   const normalizedStatus = String(status || "").toLowerCase();
   const isReady = normalizedStatus === "ready";
   const isPreparing = normalizedStatus === "preparing";
+  const normalizedDispatchStatus = String(dispatchStatus || "").toLowerCase();
+  const deliveryPartnerPhone =
+    deliveryPartnerId && typeof deliveryPartnerId === "object"
+      ? String(
+          deliveryPartnerId.phone ||
+            deliveryPartnerId.phoneNumber ||
+            "",
+        ).trim()
+      : "";
+  const canCallDeliveryPartner = Boolean(
+    deliveryPartnerPhone &&
+      (normalizedDispatchStatus === "accepted" ||
+        normalizedStatus === "out_for_delivery" ||
+        normalizedStatus === "ready" ||
+        normalizedStatus === "preparing"),
+  );
   const statusLabel = String(status || "")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -2780,6 +2797,17 @@ function OrderCard({
             {statusLabel}
           </span>
           <span className="text-[10px] text-gray-400">{timePlaced}</span>
+          {canCallDeliveryPartner && (
+            <a
+              href={`tel:${deliveryPartnerPhone}`}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-2 inline-flex items-center justify-center w-7 h-7 rounded-full border border-blue-200 bg-blue-50 text-blue-600 active:bg-blue-100 transition-colors"
+              title={`Call delivery boy${deliveryPartnerId?.name ? `: ${deliveryPartnerId.name}` : ""}`}
+              aria-label="Call delivery boy"
+            >
+              <Phone className="w-3.5 h-3.5" />
+            </a>
+          )}
         </div>
       </div>
 

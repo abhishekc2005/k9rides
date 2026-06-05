@@ -946,8 +946,8 @@ export default function Inventory() {
                   variants: Array.isArray(item.variants) ? item.variants : (Array.isArray(item.variations) ? item.variations : []),
                   category: section.name || "",
                   categoryId: section.categoryId || section.id || "",
-                  inStock: item.isAvailable !== undefined ? item.isAvailable : true,
-                  isAvailable: item.isAvailable !== undefined ? item.isAvailable : true,
+                  inStock: item.isActive !== false && item.isAvailable !== false,
+                  isAvailable: item.isActive !== false && item.isAvailable !== false,
                   isVeg: item.foodType === "Veg",
                   foodType: item.foodType || "Non-Veg",
                   approvalStatus: String(item.approvalStatus || "approved").toLowerCase(),
@@ -973,8 +973,8 @@ export default function Inventory() {
                       variants: Array.isArray(item.variants) ? item.variants : (Array.isArray(item.variations) ? item.variations : []),
                       category: section.name || subsection.name || "",
                       categoryId: section.categoryId || section.id || "",
-                      inStock: item.isAvailable !== undefined ? item.isAvailable : true,
-                      isAvailable: item.isAvailable !== undefined ? item.isAvailable : true,
+                      inStock: item.isActive !== false && item.isAvailable !== false,
+                      isAvailable: item.isActive !== false && item.isAvailable !== false,
                       isVeg: item.foodType === "Veg",
                       foodType: item.foodType || "Non-Veg",
                       approvalStatus: String(item.approvalStatus || "approved").toLowerCase(),
@@ -1494,7 +1494,7 @@ export default function Inventory() {
 
       // Backend source of truth is food_items. Update availability via /food/restaurant/foods/:id.
       if (itemId) {
-        await restaurantAPI.updateFood(itemId, { isAvailable: Boolean(isAvailable) })
+        await restaurantAPI.updateFood(itemId, { isActive: Boolean(isAvailable) })
         return
       }
 
@@ -1503,7 +1503,7 @@ export default function Inventory() {
       // Bulk update all items in a category.
       await Promise.all(
         items.map((it) =>
-          restaurantAPI.updateFood(it.id, { isAvailable: Boolean(isAvailable) }),
+          restaurantAPI.updateFood(it.id, { isActive: Boolean(isAvailable) }),
         ),
       )
     } catch (error) {
@@ -2359,11 +2359,11 @@ export default function Inventory() {
                                       </span>
                                     ) : null}
                                   </div>
-                                  <p className={`mt-1 text-xs font-medium ${
-                                    item.inStock ? "text-green-600" : "text-rose-600"
-                                  }`}>
-                                    {item.inStock ? "In stock" : getRuleStatusLabel(item.stockRule)}
-                                  </p>
+                                  {item.inStock ? (
+                                    <p className="mt-1 text-xs font-medium text-green-600">
+                                      In stock
+                                    </p>
+                                  ) : null}
                                   {item.approvalStatus === "rejected" && item.rejectionReason ? (
                                     <p className="mt-1 line-clamp-2 text-[11px] font-medium text-red-600">
                                       Reason: {item.rejectionReason}

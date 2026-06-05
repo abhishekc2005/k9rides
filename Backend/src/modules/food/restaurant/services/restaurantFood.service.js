@@ -187,7 +187,8 @@ export async function createRestaurantFood(restaurantId, body = {}) {
 
     const description = toStr(body.description);
     const image = toStr(body.image);
-    const isAvailable = body.isAvailable !== false;
+    const isActive = body.isActive !== false && body.isAvailable !== false;
+    const isAvailable = isActive;
     const foodType = normalizeFoodType(body.foodType);
     const preparationTime = toStr(body.preparationTime);
     const { categoryObjectId, categoryName } = await resolveCategoryForRestaurant(context, { ...body, foodType });
@@ -202,6 +203,7 @@ export async function createRestaurantFood(restaurantId, body = {}) {
         variants,
         image,
         foodType,
+        isActive,
         isAvailable,
         preparationTime,
         approvalStatus: 'pending',
@@ -236,6 +238,12 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
     const existing = await FoodItem.findOne({ _id: foodId, restaurantId }).lean();
     if (!existing) return null;
 
+    const providedKeys = Object.keys(body || {});
+    const stockOnlyKeys = ['isActive', 'isAvailable'];
+    const isStockOnlyUpdate =
+        providedKeys.length > 0 &&
+        providedKeys.every((key) => stockOnlyKeys.includes(key));
+
     const update = {};
 
     if (body.name !== undefined) {
@@ -247,7 +255,13 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
     if (body.description !== undefined) update.description = toStr(body.description);
     if (body.image !== undefined) update.image = toStr(body.image);
     Object.assign(update, getUpdatedFoodPricing(existing, body));
-    if (body.isAvailable !== undefined) update.isAvailable = body.isAvailable !== false;
+    if (body.isActive !== undefined || body.isAvailable !== undefined) {
+        const nextIsActive = body.isActive !== undefined
+            ? body.isActive !== false
+            : body.isAvailable !== false;
+        update.isActive = nextIsActive;
+        update.isAvailable = nextIsActive;
+    }
     if (body.preparationTime !== undefined) update.preparationTime = toStr(body.preparationTime);
 
     const targetFoodType = body.foodType !== undefined ? normalizeFoodType(body.foodType) : normalizeFoodType(existing.foodType);
@@ -267,7 +281,7 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
         update.categoryName = categoryName || '';
     }
 
-    const shouldResubmitForApproval = Object.keys(update).length > 0;
+    const shouldResubmitForApproval = Object.keys(update).length > 0 && !isStockOnlyUpdate;
 
     if (shouldResubmitForApproval) {
         update.approvalStatus = 'pending';

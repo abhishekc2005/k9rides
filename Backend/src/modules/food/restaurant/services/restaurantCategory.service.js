@@ -178,6 +178,7 @@ export async function listPublicCategories(query = {}) {
 
     const approvedCategoryIds = await FoodItem.distinct('categoryId', {
         approvalStatus: 'approved',
+        isActive: { $ne: false },
         isAvailable: { $ne: false },
         categoryId: { $ne: null },
         restaurantId: { $in: eligibleRestaurantIds }

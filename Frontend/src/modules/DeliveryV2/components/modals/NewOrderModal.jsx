@@ -64,6 +64,12 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
   const earnings = order.earnings || order.riderEarning || (order.orderAmount ? order.orderAmount * 0.1 : 0);
   const restaurantName = order.restaurantName || order.restaurant_name || (order.restaurantId?.name) || 'Restaurant';
   const restaurantAddress = order.restaurantAddress || order.restaurant_address || (order.restaurantId?.location?.address) || 'Address not available';
+  const restaurantPhone =
+    order.restaurantPhone ||
+    order.restaurant_phone ||
+    order.restaurantId?.phone ||
+    order.restaurantId?.ownerPhone ||
+    '';
   const deliveryAddress = order?.deliveryAddress || {};
 
   const geoCoords =
@@ -175,7 +181,18 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                 
                 <div className="flex-1 space-y-4">
                   <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-600 mb-0.5">Restaurant Pickup</h4>
+                    <div className="flex items-center justify-between gap-3">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-600 mb-0.5">Restaurant Pickup</h4>
+                      {restaurantPhone && (
+                        <button
+                          onClick={() => (window.location.href = `tel:${restaurantPhone}`)}
+                          className="shrink-0 w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 hover:bg-emerald-100 transition-colors active:scale-90"
+                          aria-label="Call restaurant"
+                        >
+                          <Phone className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                     <h3 className="text-gray-950 font-black text-lg leading-tight mb-0.5 line-clamp-1">{restaurantName}</h3>
                     <p className="text-gray-500 text-[11px] font-bold line-clamp-1">{restaurantAddress}</p>
                   </div>

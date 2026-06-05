@@ -25,7 +25,7 @@ import ProfileV2 from '@/modules/DeliveryV2/pages/ProfileV2';
 import { 
   Bell, HelpCircle, AlertTriangle, 
   Wallet, History, User as UserIcon, LayoutGrid,
-  Plus, Minus, Navigation2, Target, Play, CheckCircle2, Clock, ChevronDown,
+  Plus, Minus, Navigation2, Target, Play, CheckCircle2, Clock, ChevronDown, Phone,
   Contact, Package
 } from 'lucide-react';
 
@@ -109,6 +109,13 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const lastCoordRef = useRef(null);
   const rollingSpeedRef = useRef([]);
   const lastAutoArrivalRef = useRef({ PICKING_UP: false, PICKED_UP: false });
+  const customerPhone =
+    activeOrder?.userPhone ||
+    activeOrder?.customerPhone ||
+    activeOrder?.deliveryAddress?.phone ||
+    activeOrder?.userId?.phone ||
+    activeOrder?.user?.phone ||
+    '';
 
   const [zoom, setZoom] = useState(14);
   const [isSimMode, setIsSimMode] = useState(false);
@@ -837,6 +844,17 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                                  </div>
                               </div>
                             </div>
+                            {customerPhone && (
+                              <button
+                                onClick={() => {
+                                  window.location.href = `tel:${customerPhone}`;
+                                }}
+                                className="w-11 h-11 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100 hover:bg-emerald-100 transition-colors active:scale-90 shrink-0"
+                                aria-label="Call customer"
+                              >
+                                <Phone className="w-5 h-5" />
+                              </button>
+                            )}
                           </div>
   
                           {/* Customer Instructions Panel */}
@@ -850,7 +868,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                                </div>
                                <div className="relative z-10">
                                   <p className="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mb-1.5">Drop Message</p>
-                                  <p className="text-sm font-bold text-gray-950 leading-relaxed italic">"{activeOrder.note}"</p>
+                                 <p className="text-sm font-bold text-gray-950 leading-relaxed italic">"{activeOrder.note}"</p>
                                </div>
                             </div>
                           )}

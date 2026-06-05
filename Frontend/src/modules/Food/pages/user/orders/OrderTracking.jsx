@@ -19,7 +19,6 @@ import {
   CircleSlash,
   Loader2,
   Star,
-  ShieldCheck,
   AlertCircle,
   Store,
   FileText
@@ -1444,6 +1443,31 @@ export default function OrderTracking() {
           </div>
         </div>
 
+        {/* Restaurant Profile Card */}
+        {(order?.restaurant?.restaurantName || order?.restaurantId?.restaurantName || order?.restaurantPhone || order?.restaurant?.phone || order?.restaurant?.ownerPhone) && (
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-zinc-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-zinc-800 flex items-center justify-center border-2 border-white dark:border-zinc-800">
+                    <Store className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 bg-[#EB590E] w-4 h-4 rounded-full border-2 border-white dark:border-zinc-900" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white">
+                    {order?.restaurant?.restaurantName || order?.restaurantId?.restaurantName || 'Restaurant'}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Restaurant</p>
+                </div>
+              </div>
+              <motion.button className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center" onClick={handleCallRestaurant}>
+                <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </motion.button>
+            </div>
+          </div>
+        )}
+
         {/* Delivery Partner Profile Card */}
         {order?.deliveryPartnerId && (
           <div className="bg-white dark:bg-zinc-900 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-zinc-800">
@@ -1477,21 +1501,12 @@ export default function OrderTracking() {
         )}
 
         {/* Action Buttons */}
-        <div className={`grid ${isDeliveredOrder ? 'grid-cols-1' : 'grid-cols-2'} gap-3 px-1`}>
-          {!isDeliveredOrder ? (
-            <>
-              <button onClick={handleCallRider} className="flex items-center justify-center gap-2 py-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 font-bold text-gray-800 dark:text-white text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
-                <Phone className="w-4 h-4 text-[#EB590E]" /> Call
-              </button>
-              <button className="flex items-center justify-center gap-2 py-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 font-bold text-gray-800 dark:text-white text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">
-                <ShieldCheck className="w-4 h-4 text-green-500" /> Safety
-              </button>
-            </>
-          ) : (
+        <div className="grid grid-cols-1 gap-3 px-1">
+          {isDeliveredOrder ? (
             <Link to="/user/support" className="flex items-center justify-center gap-2 py-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-800 font-bold text-gray-800 dark:text-white text-sm hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors w-full">
               <AlertCircle className="w-4 h-4 text-red-500" /> Raise a Complaint
             </Link>
-          )}
+          ) : null}
         </div>
 
         {/* Delivery Instructions - Only show if NOT delivered */}

@@ -27,6 +27,7 @@ const buildMenuFromFoods = async (foods = []) => {
 
     const byCategory = new Map();
     for (const food of foods) {
+        const isFoodAvailable = food?.isActive !== false && food?.isAvailable !== false;
         const categoryId = food?.categoryId ? String(food.categoryId) : '';
         const categoryDoc = categoryMap.get(categoryId) || null;
         const sectionName = (categoryDoc?.name || food?.categoryName || food?.category || 'Menu').trim() || 'Menu';
@@ -55,7 +56,8 @@ const buildMenuFromFoods = async (foods = []) => {
             variations: serializeFoodVariants(food.variants),
             image: food.image || '',
             foodType: food.foodType || 'Non-Veg',
-            isAvailable: food.isAvailable !== false,
+            isActive: food.isActive !== false,
+            isAvailable: isFoodAvailable,
             approvalStatus: food.approvalStatus || 'approved',
             rejectionReason: food.rejectionReason || '',
             requestedAt: food.requestedAt,
@@ -135,7 +137,12 @@ export async function getPublicApprovedRestaurantMenu(restaurantIdOrSlug) {
     if (!restaurant?._id) {
         return null;
     }
-    const foods = await FoodItem.find({ restaurantId: restaurant._id, approvalStatus: 'approved' })
+    const foods = await FoodItem.find({
+        restaurantId: restaurant._id,
+        approvalStatus: 'approved',
+        isActive: { $ne: false },
+        isAvailable: { $ne: false }
+    })
         .sort({ createdAt: -1 })
         .limit(2000)
         .lean();
