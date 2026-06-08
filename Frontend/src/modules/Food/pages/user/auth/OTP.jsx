@@ -158,9 +158,18 @@ export default function OTP() {
             const handlerNames = ["getFcmToken", "getFCMToken", "getPushToken", "getFirebaseToken"];
             for (const handlerName of handlerNames) {
               try {
-                const t = await window.flutter_inappwebview.callHandler(handlerName, { module: "user" });
-                if (t && typeof t === "string" && t.length > 20) {
-                  fcmToken = t.trim();
+                const response = await window.flutter_inappwebview.callHandler(handlerName, { module: "user" });
+                const token =
+                  typeof response === "string"
+                    ? response
+                    : response?.token ||
+                      response?.fcmToken ||
+                      response?.data?.token ||
+                      response?.data?.fcmToken ||
+                      "";
+                const normalizedToken = String(token).trim();
+                if (normalizedToken.length > 20) {
+                  fcmToken = normalizedToken;
                   break;
                 }
               } catch (e) {}
@@ -450,4 +459,3 @@ export default function OTP() {
     </AnimatedPage>
   )
 }
-

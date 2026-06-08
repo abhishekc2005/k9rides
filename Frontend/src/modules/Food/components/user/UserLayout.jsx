@@ -12,6 +12,7 @@ import SearchOverlay from "./SearchOverlay"
 import BottomNavigation from "./BottomNavigation"
 import DesktopNavbar from "./DesktopNavbar"
 import { useUserNotifications } from "../../hooks/useUserNotifications"
+import { applyFoodUserTheme } from "@/shared/utils/theme.js"
 
 // Create SearchOverlay context with default value
 const SearchOverlayContext = createContext({
@@ -104,6 +105,19 @@ function LocationSelectorProvider({ children }) {
 
 export default function UserLayout() {
   const location = useLocation()
+
+  useEffect(() => {
+    const syncFoodTheme = () => {
+      applyFoodUserTheme()
+    }
+
+    syncFoodTheme()
+    window.addEventListener("pageshow", syncFoodTheme)
+
+    return () => {
+      window.removeEventListener("pageshow", syncFoodTheme)
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     // Reset scroll to top whenever location changes (pathname, search, or hash)
