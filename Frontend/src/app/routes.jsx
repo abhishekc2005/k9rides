@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy, useEffect, useLayoutEffect } from 'react'
 import { AppShellSkeleton } from '@food/components/ui/loading-skeletons'
+import { applyFoodUserTheme, applySavedTheme, applyTheme } from '../shared/utils/theme.js'
 
 const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 
@@ -49,6 +50,31 @@ const AdminRouter = lazy(() => import('../modules/Food/components/admin/AdminRou
 
 const AppRoutes = () => {
   const location = useLocation()
+
+  useLayoutEffect(() => {
+    const syncThemeForCurrentRoute = () => {
+      if (location.pathname.startsWith('/taxi/user')) {
+        applyTheme('light')
+        return
+      }
+
+      if (location.pathname.startsWith('/food/user')) {
+        applyFoodUserTheme()
+        return
+      }
+
+      applySavedTheme()
+    }
+
+    // Taxi user screens are currently designed as light-only. Keep the shared
+    // user preference light so returning to Food does not create a mismatch.
+    syncThemeForCurrentRoute()
+    window.addEventListener('pageshow', syncThemeForCurrentRoute)
+
+    return () => {
+      window.removeEventListener('pageshow', syncThemeForCurrentRoute)
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

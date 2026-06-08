@@ -20,7 +20,6 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
   const [pendingAuthData, setPendingAuthData] = useState(null)
   const navigate = useNavigate()
   const submitting = useRef(false)
-  const selectorThemeSnapshotRef = useRef({ appliedByThisView: false })
 
   const getWebFcmTokenForLogin = async () => {
     if (typeof window === "undefined" || typeof navigator === "undefined") {
@@ -88,45 +87,24 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
     const html = document.documentElement
     const body = document.body
     const root = document.getElementById("root")
-    const snapshot = selectorThemeSnapshotRef.current
     let htmlObserver = null
     let bodyObserver = null
     let rootObserver = null
 
-    const applyPersistedTheme = () => {
-      const savedTheme = localStorage.getItem("appTheme") || "light"
-      if (savedTheme === "dark") {
-        html.classList.add("dark")
-        if (body) body.classList.add("dark")
-        if (root) root.classList.add("dark")
-      } else {
-        html.classList.remove("dark")
-        if (body) body.classList.remove("dark")
-        if (root) root.classList.remove("dark")
-      }
-    }
-
     if (viewType !== "selector") {
-      applyPersistedTheme()
-      snapshot.appliedByThisView = false
       return
     }
 
     const enforceLight = () => {
-      let changed = false
       if (html.classList.contains("dark")) {
         html.classList.remove("dark")
-        changed = true
       }
       if (body?.classList.contains("dark")) {
         body.classList.remove("dark")
-        changed = true
       }
       if (root?.classList.contains("dark")) {
         root.classList.remove("dark")
-        changed = true
       }
-      if (changed) snapshot.appliedByThisView = true
     }
     enforceLight()
 
@@ -147,9 +125,6 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
       if (htmlObserver) htmlObserver.disconnect()
       if (bodyObserver) bodyObserver.disconnect()
       if (rootObserver) rootObserver.disconnect()
-      if (!snapshot.appliedByThisView) return
-      applyPersistedTheme()
-      snapshot.appliedByThisView = false
     }
   }, [viewType])
 

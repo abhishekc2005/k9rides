@@ -55,6 +55,10 @@ const debugError = (...args) => { };
 const USER_SESSION_PREFERENCE_KEYS = ["userVegMode", "food-under-250-filters"];
 
 import { registerWebPushForCurrentModule } from "@food/utils/firebaseMessaging";
+import {
+  getFoodUserTheme,
+  saveFoodUserTheme,
+} from "@/shared/utils/theme.js";
 import DeleteAccountModal from "@food/components/DeleteAccountModal";
 
 export default function Profile() {
@@ -97,20 +101,12 @@ export default function Profile() {
 
   // Settings states
   const [appearance, setAppearance] = useState(() => {
-    // Load theme from localStorage or default to 'light'
-    return localStorage.getItem("appTheme") || "light";
+    return getFoodUserTheme();
   });
 
   // Apply theme to document
   useEffect(() => {
-    const root = document.documentElement;
-    if (appearance === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    // Save to localStorage
-    localStorage.setItem("appTheme", appearance);
+    saveFoodUserTheme(appearance);
   }, [appearance]);
 
   // Get first letter of name for avatar

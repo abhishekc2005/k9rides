@@ -69,6 +69,14 @@ function isFlutterWebView() {
   );
 }
 
+function normalizeFcmToken(value) {
+  const token =
+    typeof value === "string"
+      ? value
+      : value?.token || value?.fcmToken || value?.data?.token || value?.data?.fcmToken || "";
+  return String(token).trim();
+}
+
 function isSecureContextForPush() {
   return window.isSecureContext || window.location.hostname === "localhost";
 }
@@ -433,10 +441,6 @@ function getMessagingFirebaseApp(config) {
   }
 }
 
-function getSavedToken(moduleName) {
-  return localStorage.getItem(`${tokenCachePrefix}${moduleName}`) || "";
-}
-
 function setSavedToken(moduleName, token) {
   localStorage.setItem(`${tokenCachePrefix}${moduleName}`, token);
 }
@@ -462,15 +466,14 @@ async function registerNativeWebViewFcmToken(moduleName) {
   const handlerNames = ["getFcmToken", "getFCMToken", "getPushToken", "getFirebaseToken"];
   for (const handlerName of handlerNames) {
     try {
-      const token = await window.flutter_inappwebview.callHandler(handlerName, { module: moduleName });
-      const normalizedToken = String(token || "").trim();
+      const response = await window.flutter_inappwebview.callHandler(handlerName, {
+        module: moduleName,
+      });
+      const normalizedToken = normalizeFcmToken(response);
       if (normalizedToken.length < 20) continue;
 
-      const lastSavedToken = getSavedToken(moduleName);
-      if (lastSavedToken !== normalizedToken) {
-        await saveTokenByModule(moduleName, normalizedToken, "mobile");
-        setSavedToken(moduleName, normalizedToken);
-      }
+      await saveTokenByModule(moduleName, normalizedToken, "mobile");
+      setSavedToken(moduleName, normalizedToken);
 
       pushDebugLog(PUSH_DEBUG_PREFIX, "Registered native WebView FCM token", {
         moduleName,
@@ -686,6 +689,13 @@ export async function registerWebPushForCurrentModule(pathname = window.location
   const accessToken = localStorage.getItem(`${moduleName}_accessToken`);
   if (!accessToken) return;
 
+  // Flutter wrappers must always store their native token as mobile, even when
+  // the embedded WebView happens to expose browser push APIs.
+  if (isFlutterWebView()) {
+    await registerNativeWebViewFcmToken(moduleName);
+    return null;
+  }
+
   const supportsBrowserPush = isSupportedBrowser() && isSecureContextForPush();
 
   if (supportsBrowserPush) {
@@ -758,9 +768,5 @@ export async function registerWebPushForCurrentModule(pathname = window.location
     return registrationInFlight;
   }
 
-  // Flutter WebView fallback: register native token when browser web push isn't available.
-  // This keeps restaurant/delivery FCM alerts working even when Web Push APIs are limited.
-  await registerNativeWebViewFcmToken(moduleName);
   return null;
 }
-

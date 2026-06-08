@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
 import App from './app/App.jsx'
 import { isModuleAuthenticated } from './modules/Food/utils/auth.js'
+import { applySavedTheme } from './shared/utils/theme.js'
 import './shared/styles/global.css'
 
 const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
@@ -14,13 +15,7 @@ import('./modules/Food/utils/businessSettings.js')
   .then(({ loadBusinessSettings }) => loadBusinessSettings())
   .catch(() => { /* Silently fail — settings load when admin authenticates */ })
 
-// Apply saved theme
-const savedTheme = localStorage.getItem('appTheme') || 'light'
-if (savedTheme === 'dark') {
-  document.documentElement.classList.add('dark')
-} else {
-  document.documentElement.classList.remove('dark')
-}
+applySavedTheme()
 
 function isNativeLikeShell() {
   if (typeof window === 'undefined') return false
