@@ -69,6 +69,20 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
   }, [restaurant?.id, restaurant?.slug, restaurant?.updatedAt, images]);
 
   useEffect(() => {
+    let intervalId;
+    if (images.length > 1) {
+      intervalId = setInterval(() => {
+        if (!isSwiping.current) {
+          setCurrentIndex((prev) => (prev + 1) % images.length);
+        }
+      }, 3500);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [images.length]);
+
+  useEffect(() => {
     setLastGoodSrc("");
   }, [restaurant?.id, restaurant?.slug]);
 

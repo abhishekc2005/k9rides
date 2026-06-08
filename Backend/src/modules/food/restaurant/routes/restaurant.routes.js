@@ -184,10 +184,12 @@ router.get('/restaurants/:id/addons', cacheResponse(600, 'restaurant_addons'), g
 // Foods (restaurant creates/updates items -> stored in food_items collection)
 router.post('/foods', authMiddleware, requireRestaurant, async (req, res, next) => {
     await invalidateCache('restaurant_menu:*');
+    await invalidateCache('restaurants:*');
     next();
 }, createRestaurantFoodController);
 router.patch('/foods/:id', authMiddleware, requireRestaurant, async (req, res, next) => {
     await invalidateCache('restaurant_menu:*');
+    await invalidateCache('restaurants:*');
     next();
 }, updateRestaurantFoodController);
 

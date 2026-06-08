@@ -952,7 +952,7 @@ export default function Inventory() {
                   foodType: item.foodType || "Non-Veg",
                   approvalStatus: String(item.approvalStatus || "approved").toLowerCase(),
                   rejectionReason: item.rejectionReason || "",
-                  isRecommended: Boolean(recommendedMap?.[String(item.id)]),
+                  isRecommended: item.isRecommended === true || Boolean(recommendedMap?.[String(item.id)]),
                   stockQuantity: item.stock || "Unlimited",
                   unit: item.itemSizeUnit || "piece",
                 })
@@ -979,7 +979,7 @@ export default function Inventory() {
                       foodType: item.foodType || "Non-Veg",
                       approvalStatus: String(item.approvalStatus || "approved").toLowerCase(),
                       rejectionReason: item.rejectionReason || "",
-                      isRecommended: Boolean(recommendedMap?.[String(item.id)]),
+                      isRecommended: item.isRecommended === true || Boolean(recommendedMap?.[String(item.id)]),
                       stockQuantity: item.stock || "Unlimited",
                       unit: item.itemSizeUnit || "piece",
                     })
@@ -1732,8 +1732,8 @@ export default function Inventory() {
       })
     )
 
-    // Persist local recommended preference (backend doesn't support it yet).
     try {
+      await restaurantAPI.updateFood(itemId, { isRecommended: newRecommendationStatus })
       setRecommendedMap((prev) => {
         const next = { ...(prev || {}) }
         next[String(itemId)] = Boolean(newRecommendationStatus)
@@ -1742,6 +1742,19 @@ export default function Inventory() {
       })
     } catch (error) {
       debugWarn("Failed to persist recommended state:", error)
+      setCategories(prev =>
+        prev.map(category => {
+          if (category.id !== categoryId) return category
+          const revertedItems = category.items.map(menuItem =>
+            menuItem.id === itemId ? { ...menuItem, isRecommended: !newRecommendationStatus } : menuItem
+          )
+          return {
+            ...category,
+            items: revertedItems,
+          }
+        })
+      )
+      toast.error("Failed to update recommended status")
     }
   }
 

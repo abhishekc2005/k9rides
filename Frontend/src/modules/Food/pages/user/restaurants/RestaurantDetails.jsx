@@ -852,7 +852,7 @@ function RestaurantDetailsContent() {
                 }
 
                 let finalMenuSections = [...menuSections]
-                if (hasPreviousOrderForRestaurant) {
+                if (recommendedItems.length > 0) {
                   finalMenuSections = [{ name: "Recommended for you", items: recommendedItems, subsections: [] }, ...finalMenuSections]
                 }
                 if (searchedDishSection) {

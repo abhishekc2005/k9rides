@@ -1,4 +1,4 @@
-﻿import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import React, {
   useRef,
   useEffect,
@@ -230,6 +230,22 @@ const RestaurantImageCarousel = React.memo(
       setShowShimmer(images.length > 0);
     }, [restaurant?.id, restaurant?.slug, restaurant?.updatedAt, images]);
 
+    const showMultipleImages = images.length > 1;
+
+    useEffect(() => {
+      let intervalId;
+      if (showMultipleImages) {
+        intervalId = setInterval(() => {
+          if (!isSwiping.current) {
+            setCurrentIndex((prev) => (prev + 1) % images.length);
+          }
+        }, 3500);
+      }
+      return () => {
+        if (intervalId) clearInterval(intervalId);
+      };
+    }, [showMultipleImages, images.length]);
+
     // Clear sticky successful source only when card identity changes.
     useEffect(() => {
       setLastGoodSrc("");
@@ -299,7 +315,8 @@ const RestaurantImageCarousel = React.memo(
       touchEndX.current = 0;
     };
 
-    const showMultipleImages = images.length > 1;
+    const showMultipleImagesDef = images.length > 1;
+
 
     return (
       <div
@@ -387,6 +404,170 @@ const RestaurantImageCarousel = React.memo(
 
         {/* Shine Effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full transition-transform duration-1000 group-hover:animate-shine" />
+      </div>
+    );
+  },
+);
+
+const RecommendedFoodImageStrip = React.memo(
+  ({
+    restaurant,
+    priority = false,
+    backendOrigin = "",
+    className = "h-48 sm:h-56 md:h-60 lg:h-64 xl:h-72",
+    roundedClass = "rounded-t-md",
+  }) => {
+    const dragStateRef = useRef({
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      isDragging: false,
+    });
+
+    const resolveImageSrc = useCallback(
+      (value) => {
+        if (!value) return "";
+        const raw =
+          typeof value === "string"
+            ? value
+            : typeof value === "object"
+              ? value.image || value.url || value.src || ""
+              : "";
+
+        if (typeof raw !== "string") return "";
+        const trimmed = raw.trim();
+        if (!trimmed) return "";
+        const isRelative = !/^(https?:|\/\/|data:|blob:)/i.test(trimmed);
+        return backendOrigin && isRelative
+          ? `${backendOrigin.replace(/\/$/, "")}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`
+          : trimmed;
+      },
+      [backendOrigin],
+    );
+
+    const stripImages = useMemo(() => {
+      const list = Array.isArray(restaurant?.recommendedImages)
+        ? restaurant.recommendedImages
+        : [];
+
+      const slides = [];
+
+      for (const item of list) {
+        const image = resolveImageSrc(item);
+        if (!image) continue;
+        slides.push({
+          id: item?.id || `${image}-${slides.length}`,
+          image,
+          name: item?.name || restaurant?.featuredDish || restaurant?.name || "Dish",
+        });
+        if (slides.length >= 8) break;
+      }
+
+      return slides;
+    }, [restaurant?.recommendedImages, restaurant?.featuredDish, restaurant?.name, resolveImageSrc]);
+
+    const handlePointerDown = useCallback((event) => {
+      dragStateRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        isDragging: false,
+      };
+    }, []);
+
+    const handlePointerMove = useCallback((event) => {
+      const dragState = dragStateRef.current;
+      if (dragState.pointerId !== event.pointerId) return;
+
+      const deltaX = Math.abs(event.clientX - dragState.startX);
+      const deltaY = Math.abs(event.clientY - dragState.startY);
+      if (deltaX > 8 && deltaX > deltaY) {
+        dragState.isDragging = true;
+      }
+    }, []);
+
+    const resetDragState = useCallback(() => {
+      dragStateRef.current = {
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        isDragging: false,
+      };
+    }, []);
+
+    const handleClickCapture = useCallback((event) => {
+      if (!dragStateRef.current.isDragging) return;
+      event.preventDefault();
+      event.stopPropagation();
+      resetDragState();
+    }, [resetDragState]);
+
+    const scrollContainerRef = useRef(null);
+
+    useEffect(() => {
+      let intervalId;
+      if (stripImages.length > 1) {
+        intervalId = setInterval(() => {
+          const container = scrollContainerRef.current;
+          if (container && !dragStateRef.current.isDragging) {
+            const maxScrollLeft = container.scrollWidth - container.clientWidth;
+            if (container.scrollLeft >= maxScrollLeft - 10) {
+              container.scrollTo({ left: 0, behavior: "smooth" });
+            } else {
+              container.scrollBy({ left: container.clientWidth, behavior: "smooth" });
+            }
+          }
+        }, 3500);
+      }
+      return () => {
+        if (intervalId) clearInterval(intervalId);
+      };
+    }, [stripImages.length]);
+
+    if (stripImages.length === 0) {
+      return (
+        <RestaurantImageCarousel
+          restaurant={restaurant}
+          priority={priority}
+          backendOrigin={backendOrigin}
+          className={className}
+          roundedClass={roundedClass}
+        />
+      );
+    }
+
+    return (
+      <div
+        className={`relative ${className} w-full overflow-hidden ${roundedClass} bg-[#f5f5f5]`}
+      >
+        <div
+          ref={scrollContainerRef}
+          className="flex h-full overflow-x-auto overscroll-x-contain snap-x snap-mandatory [touch-action:pan-x] [&::-webkit-scrollbar]:hidden"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={resetDragState}
+          onPointerCancel={resetDragState}
+          onClickCapture={handleClickCapture}
+        >
+          {stripImages.map((item, index) => (
+            <div
+              key={item.id || `${item.image}-${index}`}
+              className="relative h-full w-full shrink-0 snap-start overflow-hidden bg-white"
+            >
+              <OptimizedImage
+                src={item.image}
+                alt={`${restaurant?.name || "Restaurant"} - ${item.name || "Recommended item"}`}
+                className="h-full w-full"
+                objectFit="cover"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                loading={priority && index < 2 ? "eager" : "lazy"}
+                placeholder={priority && index === 0 ? "blur" : "empty"}
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   },
@@ -1629,6 +1810,24 @@ export default function Home() {
               // Keep single image for backward compatibility
               const image = allImages[0] || profileImageUrl || "";
               const offerText = restaurant.offer || null;
+              const recommendedImages = Array.isArray(restaurant.recommendedImages)
+                ? restaurant.recommendedImages
+                    .map((item, itemIndex) => {
+                      const image = normalizeImageUrl(
+                        item?.image || item?.url || item?.src || "",
+                      );
+                      if (!image) return null;
+                      return {
+                        id:
+                          item?.id ||
+                          item?._id ||
+                          `${restaurant.restaurantId || restaurant._id || "restaurant"}-recommended-${itemIndex}`,
+                        image,
+                        name: item?.name || "",
+                      };
+                    })
+                    .filter(Boolean)
+                : [];
 
               return {
                 id: restaurant.restaurantId || restaurant._id,
@@ -1649,6 +1848,7 @@ export default function Home() {
                 distanceInKm: distanceInKm, // Store numeric distance for sorting
                 image: image,
                 images: allImages, // Array of cover images for carousel (separate from menu images)
+                recommendedImages,
                 priceRange: restaurant.priceRange || "$$", // Use from API or default
                 featuredDish:
                   restaurant.featuredDish ||
@@ -2784,7 +2984,7 @@ export default function Home() {
                             }`}>
                             {/* Image Section with Carousel */}
                             <div className="relative">
-                              <RestaurantImageCarousel
+                              <RecommendedFoodImageStrip
                                 restaurant={restaurant}
                                 priority={index < 3}
                                 backendOrigin={BACKEND_ORIGIN}

@@ -4,6 +4,7 @@ import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js'
 import mongoose from 'mongoose';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
+import { FoodItem } from '../../admin/models/food.model.js';
 
 const normalizeName = (value) =>
     String(value || '')
@@ -197,6 +198,58 @@ const toFiniteNumber = (value) => {
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const normalizeCuisine = (value) => String(value || '').trim().slice(0, 80);
+
+const MAX_RECOMMENDED_IMAGES_PER_RESTAURANT = 8;
+
+const attachRecommendedImagesToRestaurants = async (restaurants = []) => {
+    if (!Array.isArray(restaurants) || restaurants.length === 0) return [];
+
+    const restaurantIds = restaurants
+        .map((restaurant) => restaurant?._id)
+        .filter((id) => mongoose.Types.ObjectId.isValid(String(id)))
+        .map((id) => new mongoose.Types.ObjectId(String(id)));
+
+    if (restaurantIds.length === 0) {
+        return restaurants.map((restaurant) => ({
+            ...restaurant,
+            recommendedImages: []
+        }));
+    }
+
+    const recommendedItems = await FoodItem.find({
+        restaurantId: { $in: restaurantIds },
+        approvalStatus: 'approved',
+        isRecommended: true,
+        isActive: { $ne: false },
+        isAvailable: { $ne: false }
+    })
+        .select('restaurantId image name')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const recommendedByRestaurantId = new Map();
+
+    for (const item of recommendedItems) {
+        const restaurantId = String(item?.restaurantId || '');
+        const image = typeof item?.image === 'string' ? item.image.trim() : '';
+        if (!restaurantId || !image) continue;
+
+        const current = recommendedByRestaurantId.get(restaurantId) || [];
+        if (current.length >= MAX_RECOMMENDED_IMAGES_PER_RESTAURANT) continue;
+
+        current.push({
+            id: String(item?._id || `${restaurantId}-${current.length}`),
+            image,
+            name: item?.name || ''
+        });
+        recommendedByRestaurantId.set(restaurantId, current);
+    }
+
+    return restaurants.map((restaurant) => ({
+        ...restaurant,
+        recommendedImages: recommendedByRestaurantId.get(String(restaurant?._id || '')) || []
+    }));
+};
 
 const parseSortBy = (value) => {
     const v = String(value || '').trim();
@@ -1430,7 +1483,8 @@ export const listApprovedRestaurants = async (query = {}) => {
         ]);
 
         const total = totalDocs?.[0]?.count || 0;
-        return { restaurants: pageDocs, total, page, limit };
+        const restaurantsWithRecommendedImages = await attachRecommendedImagesToRestaurants(pageDocs);
+        return { restaurants: restaurantsWithRecommendedImages, total, page, limit };
     }
 
     // Non-geo path: normal query + sort.
@@ -1453,7 +1507,8 @@ export const listApprovedRestaurants = async (query = {}) => {
         FoodRestaurant.countDocuments(filter)
     ]);
 
-    const restaurants = (restaurantsRaw || []).map((r) => ({
+    const restaurantsWithRecommendedImages = await attachRecommendedImagesToRestaurants(restaurantsRaw || []);
+    const restaurants = restaurantsWithRecommendedImages.map((r) => ({
         ...r,
         // Frontend user app expects `name` and often checks `profileImage.url`
         restaurantId: r._id,
@@ -1467,7 +1522,8 @@ export const listApprovedRestaurants = async (query = {}) => {
         closingTime: r.closingTime || null,
         openDays: Array.isArray(r.openDays) ? r.openDays : [],
         // Keep menuImages as an array for fallbacks; allow both string and {url} on client.
-        menuImages: Array.isArray(r.menuImages) ? r.menuImages : []
+        menuImages: Array.isArray(r.menuImages) ? r.menuImages : [],
+        recommendedImages: Array.isArray(r.recommendedImages) ? r.recommendedImages : []
     }));
 
     return { restaurants, total, page, limit };

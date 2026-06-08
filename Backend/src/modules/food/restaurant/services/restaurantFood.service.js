@@ -30,6 +30,9 @@ const normalizeFoodType = (v) => {
     return 'Non-Veg';
 };
 
+const normalizeRecommendedFlag = (value) =>
+    value === true || value === 1 || String(value).trim().toLowerCase() === 'true';
+
 const getCreateFoodPricing = (body = {}) => {
     const variants = normalizeFoodVariantsInput(extractRawFoodVariants(body));
     if (variants.length > 0) {
@@ -189,6 +192,7 @@ export async function createRestaurantFood(restaurantId, body = {}) {
     const image = toStr(body.image);
     const isActive = body.isActive !== false && body.isAvailable !== false;
     const isAvailable = isActive;
+    const isRecommended = normalizeRecommendedFlag(body.isRecommended);
     const foodType = normalizeFoodType(body.foodType);
     const preparationTime = toStr(body.preparationTime);
     const { categoryObjectId, categoryName } = await resolveCategoryForRestaurant(context, { ...body, foodType });
@@ -205,6 +209,7 @@ export async function createRestaurantFood(restaurantId, body = {}) {
         foodType,
         isActive,
         isAvailable,
+        isRecommended,
         preparationTime,
         approvalStatus: 'pending',
         requestedAt: new Date()
@@ -239,10 +244,10 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
     if (!existing) return null;
 
     const providedKeys = Object.keys(body || {});
-    const stockOnlyKeys = ['isActive', 'isAvailable'];
-    const isStockOnlyUpdate =
+    const operationalOnlyKeys = ['isActive', 'isAvailable', 'isRecommended'];
+    const isOperationalOnlyUpdate =
         providedKeys.length > 0 &&
-        providedKeys.every((key) => stockOnlyKeys.includes(key));
+        providedKeys.every((key) => operationalOnlyKeys.includes(key));
 
     const update = {};
 
@@ -261,6 +266,9 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
             : body.isAvailable !== false;
         update.isActive = nextIsActive;
         update.isAvailable = nextIsActive;
+    }
+    if (body.isRecommended !== undefined) {
+        update.isRecommended = normalizeRecommendedFlag(body.isRecommended);
     }
     if (body.preparationTime !== undefined) update.preparationTime = toStr(body.preparationTime);
 
@@ -281,7 +289,7 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
         update.categoryName = categoryName || '';
     }
 
-    const shouldResubmitForApproval = Object.keys(update).length > 0 && !isStockOnlyUpdate;
+    const shouldResubmitForApproval = Object.keys(update).length > 0 && !isOperationalOnlyUpdate;
 
     if (shouldResubmitForApproval) {
         update.approvalStatus = 'pending';
