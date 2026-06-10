@@ -168,8 +168,9 @@ export const SettingsProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    let appName = settings.general?.app_name || 'App';
-    if (appName.toLowerCase().includes('eqosy') || appName.toLowerCase().includes('appzeto')) {
+    let appName = settings.general?.app_name || 'K9 Rides';
+    const lowerAppName = appName.toLowerCase();
+    if (lowerAppName.includes('eqosy') || lowerAppName.includes('appzeto') || lowerAppName.includes('rideon') || lowerAppName.includes('rydon')) {
       appName = 'K9 Rides';
     }
     document.title = appName;

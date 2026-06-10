@@ -9,8 +9,8 @@ const createAdmin = async () => {
         await mongoose.connect(config.mongodbUri);
         console.log('Connected.');
 
-        const email = 'Eqosyindia@gmail.com'.toLowerCase();
-        const password = 'sahin.eqosy@2004#';
+        const email = 'K9 Ridesindia@gmail.com'.toLowerCase();
+        const password = 'sahin.K9 Rides@2004#';
 
         console.log(`Hashing password for ${email}...`);
         const hashedPassword = await hashPassword(password);
@@ -20,7 +20,7 @@ const createAdmin = async () => {
         if (admin) {
             console.log('Admin already exists. Updating password...');
             admin.password = hashedPassword;
-            admin.name = 'Eqosy India';
+            admin.name = 'K9 Rides India';
             admin.admin_type = 'superadmin';
             admin.role = 'superadmin';
             admin.active = true;
@@ -30,7 +30,7 @@ const createAdmin = async () => {
         } else {
             console.log('Creating new Admin...');
             admin = await Admin.create({
-                name: 'Eqosy India',
+                name: 'K9 Rides India',
                 email,
                 password: hashedPassword,
                 admin_type: 'superadmin',

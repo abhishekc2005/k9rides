@@ -458,7 +458,7 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
             <div className="w-12 h-12 flex items-center justify-center bg-white rounded-xl shadow-lg">
               <img src={getDynamicLogo()} alt={getCompanyName()} className="w-8 h-8 object-contain" />
             </div>
-            <h1 className="text-3xl font-black tracking-tight">K9 Rides</h1>
+            <h1 className="text-3xl font-black tracking-tight">{getCompanyName()}</h1>
           </motion.div>
 
           <motion.div
@@ -529,7 +529,7 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
 
                   <div className="text-center mb-8">
                     <h2 className="text-[32px] leading-tight font-black text-[#1A1A1A] tracking-tight mb-2">
-                      Welcome to K9 Rides
+                      Welcome to {getCompanyName()}
                     </h2>
                     <p className="text-[#1A1A1A] text-[15px] font-medium max-w-[28ch] mx-auto">
                       Enter your phone number to<br />access the unified ecosystem.

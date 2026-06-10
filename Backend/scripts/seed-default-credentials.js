@@ -10,22 +10,22 @@ dotenv.config();
 
 const DEFAULTS = {
   admin: {
-    email: "Eqosyindia@gmail.com",
-    password: "sahin.eqosy@2004#",
-    name: "Eqosy Admin",
+    email: "K9 Ridesindia@gmail.com",
+    password: "sahin.K9 Rides@2004#",
+    name: "K9 Rides Admin",
     servicesAccess: ["food", "quickCommerce", "taxi"],
   },
   user: {
     phone: "9407046608",
     countryCode: "+91",
-    name: "Eqosy User",
+    name: "K9 Rides User",
   },
   restaurant: {
     phone: "9009925021",
     countryCode: "+91",
-    restaurantName: "Eqosy Demo Restaurant",
-    ownerName: "Eqosy Restaurant Owner",
-    ownerEmail: "restaurant@eqosy.com",
+    restaurantName: "K9 Rides Demo Restaurant",
+    ownerName: "K9 Rides Restaurant Owner",
+    ownerEmail: "restaurant@K9 Rides.com",
     city: "Bhopal",
     state: "Madhya Pradesh",
     status: "approved",
@@ -33,7 +33,7 @@ const DEFAULTS = {
   delivery: {
     phone: "7610416911",
     countryCode: "+91",
-    name: "Eqosy Delivery Partner",
+    name: "K9 Rides Delivery Partner",
     city: "Bhopal",
     state: "Madhya Pradesh",
     vehicleType: "bike",

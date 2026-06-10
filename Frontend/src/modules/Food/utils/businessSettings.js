@@ -13,7 +13,9 @@ export const normalizeCompanyName = (value) => {
   const raw = typeof value === "string" ? value.trim() : "";
   if (!raw) return "K9 Rides";
   const lowerRaw = raw.toLowerCase();
-  if (lowerRaw.includes("appzeto") || lowerRaw.includes("k9 rides") || lowerRaw.includes("eqosy")) return "K9 Rides";
+  if (lowerRaw.includes("eqosy") || lowerRaw.includes("appzeto") || lowerRaw.includes("rideon") || lowerRaw.includes("rydon")) {
+    return "K9 Rides";
+  }
   return raw;
 };
 
