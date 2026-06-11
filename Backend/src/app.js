@@ -10,16 +10,8 @@ import { apiRateLimiter } from './middleware/rateLimit.js';
 import { responseTimeLogger } from './middleware/responseTimeLogger.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthCheck } from './config/health.js';
-import { config } from './config/env.js';
+import { config, isOriginAllowed } from './config/env.js';
 
-const getCorsOrigins = () => {
-    const parsed = String(config.socketCorsOrigin || '')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean);
-
-    return parsed.length > 0 ? parsed : ['https://k9rides.onrender.com'];
-};
 
 const app = express();
 
@@ -66,7 +58,14 @@ app.use(helmet({
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 app.use(cors({
-    origin: getCorsOrigins()
+    origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+            callback(null, true);
+        } else {
+            callback(null, false);
+        }
+    },
+    credentials: true
 }));
 app.use(morgan('dev'));
 app.use(express.json({

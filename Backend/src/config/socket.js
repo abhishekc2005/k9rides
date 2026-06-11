@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { config } from './env.js';
+import { config, isOriginAllowed } from './env.js';
 import { logger } from '../utils/logger.js';
 import { verifyAccessToken } from '../core/auth/token.util.js';
 import { getFirebaseDB } from './firebase.js';
@@ -42,20 +42,15 @@ const roomNames = {
  * @returns {Promise<Server>}
  */
 export const initSocket = async (server) => {
-    const socketOrigins = String(config.socketCorsOrigin || '')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean);
-    const socketCorsOrigin =
-        socketOrigins.length === 0
-            ? '*'
-            : socketOrigins.length === 1
-                ? socketOrigins[0]
-                : socketOrigins;
-
     io = new Server(server, {
         cors: {
-            origin: socketCorsOrigin,
+            origin: (origin, callback) => {
+                if (isOriginAllowed(origin)) {
+                    callback(null, true);
+                } else {
+                    callback(null, false);
+                }
+            },
             methods: ['GET', 'POST'],
             credentials: true,
         }
