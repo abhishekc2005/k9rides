@@ -20,11 +20,11 @@ import {
   Info,
   Layers,
   MousePointer2,
-  X
+  X,
+  Shapes
 } from "lucide-react";
 import {
   GoogleMap,
-  DrawingManager,
   Circle,
   Polygon,
   Autocomplete,
@@ -169,28 +169,280 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
     }
   };
 
-  const onPolygonComplete = (polygon) => {
-    const coords = polygon.getPath().getArray().map(p => ({
-      lat: p.lat(),
-      lng: p.lng()
-    }));
-    setBoundaryMode('polygon');
-    setPolygonCoords(coords);
-    setCircleCenter(null);
-    setCircleRadiusMeters('');
-    polygon.setMap(null);
+  const isDrawingRef = useRef(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const drawPointsRef = useRef([]);
+  const pathMarkersRef = useRef([]);
+  const initialDrawDoneRef = useRef(false);
+  const boundaryModeRef = useRef(boundaryMode);
+
+  useEffect(() => {
+    boundaryModeRef.current = boundaryMode;
+  }, [boundaryMode]);
+
+  const orderPointsRadially = (pts) => {
+    const points = pts
+      .map(p => {
+        const lat = typeof p.lat === 'function' ? p.lat() : p.lat;
+        const lng = typeof p.lng === 'function' ? p.lng() : p.lng;
+        return { lat, lng };
+      })
+      .filter(p => typeof p.lat === 'number' && typeof p.lng === 'number');
+
+    if (points.length < 3) return points;
+
+    const cx = points.reduce((s, p) => s + p.lng, 0) / points.length;
+    const cy = points.reduce((s, p) => s + p.lat, 0) / points.length;
+
+    return [...points].sort((a, b) =>
+      Math.atan2(a.lat - cy, a.lng - cx) - Math.atan2(b.lat - cy, b.lng - cx)
+    );
   };
 
-  const onCircleComplete = (circle) => {
-    const center = circle.getCenter();
-    setBoundaryMode('circle');
-    setCircleCenter({
-      lat: center.lat(),
-      lng: center.lng(),
+  const renderVertexMarkers = (google, map, latLngs) => {
+    pathMarkersRef.current?.forEach(m => m.setMap(null));
+    pathMarkersRef.current = latLngs.map((latLng, i) => {
+      const marker = new google.maps.Marker({
+        position: latLng,
+        map,
+        draggable: true,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: "#4f46e5",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+        zIndex: 1000,
+        title: `Point ${i + 1}`,
+      });
+
+      google.maps.event.addListener(marker, 'drag', () => {
+        drawPointsRef.current[i] = marker.getPosition();
+        const ordered = drawPointsRef.current.length >= 3
+          ? orderPointsRadially(drawPointsRef.current)
+          : drawPointsRef.current.map(p => ({
+              lat: typeof p.lat === 'function' ? p.lat() : p.lat,
+              lng: typeof p.lng === 'function' ? p.lng() : p.lng
+            }));
+        if (polygonRef.current) {
+          polygonRef.current.setPaths(ordered);
+        }
+      });
+
+      google.maps.event.addListener(marker, 'dragend', () => {
+        drawPointsRef.current[i] = marker.getPosition();
+        if (drawPointsRef.current.length >= 3) {
+          const sortedCoords = orderPointsRadially(drawPointsRef.current);
+          drawPointsRef.current = sortedCoords.map(c => new google.maps.LatLng(c.lat, c.lng));
+        }
+
+        const ordered = drawPointsRef.current.map(p => ({
+          lat: typeof p.lat === 'function' ? p.lat() : p.lat,
+          lng: typeof p.lng === 'function' ? p.lng() : p.lng
+        }));
+
+        setPolygonCoords(ordered.map(p => ({
+          lat: parseFloat(p.lat.toFixed(6)),
+          lng: parseFloat(p.lng.toFixed(6)),
+        })));
+
+        renderVertexMarkers(google, map, drawPointsRef.current);
+      });
+
+      return marker;
     });
-    setCircleRadiusMeters(String(Math.round(circle.getRadius())));
+  };
+
+  const renderDrawingPolygon = (google, map) => {
+    const points = drawPointsRef.current;
+    if (polygonRef.current) {
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+
+    const ordered = points.length >= 3 
+      ? orderPointsRadially(points) 
+      : points.map(p => ({
+          lat: typeof p.lat === 'function' ? p.lat() : p.lat,
+          lng: typeof p.lng === 'function' ? p.lng() : p.lng
+        }));
+
+    if (ordered.length >= 2) {
+      polygonRef.current = new google.maps.Polygon({
+        paths: ordered,
+        fillColor: "#4f46e5",
+        fillOpacity: 0.25,
+        strokeColor: "#4f46e5",
+        strokeWeight: 2,
+        clickable: false,
+        editable: false,
+        zIndex: 1,
+      });
+      polygonRef.current.setMap(map);
+    }
+
+    renderVertexMarkers(google, map, points);
+    setPolygonCoords(ordered.map(p => ({
+      lat: parseFloat(p.lat.toFixed(6)),
+      lng: parseFloat(p.lng.toFixed(6)),
+    })));
+  };
+
+  const drawEditablePolygon = (google, map, coords) => {
+    const path = coords.map(c => {
+      const lat = typeof c === 'object' ? (c.lat) : null;
+      const lng = typeof c === 'object' ? (c.lng) : null;
+      return new google.maps.LatLng(lat, lng);
+    }).filter(Boolean);
+    
+    const polygon = new google.maps.Polygon({
+      paths: path,
+      strokeColor: "#4f46e5",
+      strokeOpacity: 0.8,
+      strokeWeight: 3,
+      fillColor: "#4f46e5",
+      fillOpacity: 0.25,
+      editable: true,
+      draggable: false,
+      clickable: true,
+      zIndex: 1000,
+    });
+    polygon.setMap(map);
+    polygonRef.current = polygon;
+    pathMarkersRef.current?.forEach(m => m.setMap(null));
+    pathMarkersRef.current = [];
+
+    let syncTimeout;
+    const sync = () => {
+      clearTimeout(syncTimeout);
+      syncTimeout = setTimeout(() => {
+        const p = polygon.getPath();
+        const out = [];
+        p.forEach(ll => out.push({
+          lat: parseFloat(ll.lat().toFixed(6)),
+          lng: parseFloat(ll.lng().toFixed(6))
+        }));
+        setPolygonCoords(out);
+      }, 50);
+    };
+    
+    const pp = polygon.getPath();
+    google.maps.event.addListener(pp, 'set_at', sync);
+    google.maps.event.addListener(pp, 'insert_at', sync);
+    google.maps.event.addListener(pp, 'remove_at', sync);
+
+    google.maps.event.addListener(polygon, 'rightclick', (event) => {
+      if (event.vertex !== undefined) {
+        const p = polygon.getPath();
+        if (p.getLength() > 3) {
+          p.removeAt(event.vertex);
+        } else {
+          alert("A polygon must have at least 3 vertices.");
+        }
+      }
+    });
+
+    if (path.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      path.forEach(latLng => bounds.extend(latLng));
+      map.fitBounds(bounds);
+    }
+  };
+
+  const drawExistingPolygon = (google, map, coords) => {
+    if (!coords || coords.length < 3) return;
+    if (polygonRef.current) polygonRef.current.setMap(null);
+    pathMarkersRef.current?.forEach(m => m.setMap(null));
+    drawEditablePolygon(google, map, coords);
+  };
+
+  const finishDrawing = () => {
+    const google = window.google, map = mapRef.current;
+    if (!google || !map) return false;
+
+    const points = drawPointsRef.current;
+    if (points.length < 3) {
+      alert("Please click at least 3 points on the map.");
+      return false;
+    }
+
+    if (polygonRef.current) {
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+    pathMarkersRef.current?.forEach(m => m.setMap(null));
+    pathMarkersRef.current = [];
+
+    const ordered = points.length >= 3 
+      ? orderPointsRadially(points) 
+      : points.map(p => ({
+          lat: typeof p.lat === 'function' ? p.lat() : p.lat,
+          lng: typeof p.lng === 'function' ? p.lng() : p.lng
+        }));
+    const coords = ordered.map(p => ({
+      lat: parseFloat(p.lat.toFixed(6)),
+      lng: parseFloat(p.lng.toFixed(6)),
+    }));
+    setPolygonCoords(coords);
+    drawEditablePolygon(google, map, coords);
+    return true;
+  };
+
+  const toggleDrawingMode = () => {
+    const google = window.google, map = mapRef.current;
+    if (!google || !map) {
+      alert("Map is still loading.");
+      return;
+    }
+
+    if (isDrawing) {
+      if (finishDrawing() === false) return;
+      isDrawingRef.current = false;
+      setIsDrawing(false);
+      map.setOptions({ draggableCursor: null });
+    } else {
+      clearDrawing();
+      drawPointsRef.current = [];
+      isDrawingRef.current = true;
+      setIsDrawing(true);
+      map.setOptions({ draggableCursor: 'crosshair' });
+    }
+  };
+
+  const clearDrawing = () => {
+    drawPointsRef.current = [];
+    if (polygonRef.current) {
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+    pathMarkersRef.current?.forEach(m => m.setMap(null));
+    pathMarkersRef.current = [];
     setPolygonCoords([]);
-    circle.setMap(null);
+    setCircleCenter(null);
+    setCircleRadiusMeters('');
+  };
+
+  const handleMapClick = (event) => {
+    const google = window.google;
+    const map = mapRef.current;
+    if (!google || !map) return;
+
+    if (!isDrawingRef.current) return;
+
+    if (boundaryModeRef.current === 'circle') {
+      const lat = event.latLng.lat();
+      const lng = event.latLng.lng();
+      setCircleCenter({ lat, lng });
+      setCircleRadiusMeters("1000");
+      setIsDrawing(false);
+      isDrawingRef.current = false;
+      map.setOptions({ draggableCursor: null });
+    } else {
+      drawPointsRef.current.push(event.latLng);
+      renderDrawingPolygon(google, map);
+    }
   };
 
   const syncPolygonState = () => {
@@ -244,7 +496,12 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
   useEffect(() => () => {
     polygonListenersRef.current.forEach((listener) => listener?.remove?.());
     polygonListenersRef.current = [];
-    polygonRef.current = null;
+    if (polygonRef.current) {
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+    pathMarkersRef.current?.forEach(m => m.setMap(null));
+    pathMarkersRef.current = [];
     circleListenersRef.current.forEach((listener) => listener?.remove?.());
     circleListenersRef.current = [];
     circleRef.current = null;
@@ -332,6 +589,21 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
     setCircleCenter(null);
     setCircleRadiusMeters('');
     setCountryBoundaryPaths([]);
+
+    // Clear manual drawing state/overlays:
+    isDrawingRef.current = false;
+    setIsDrawing(false);
+    drawPointsRef.current = [];
+    initialDrawDoneRef.current = false;
+    if (polygonRef.current) {
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+    pathMarkersRef.current?.forEach(m => m.setMap(null));
+    pathMarkersRef.current = [];
+    if (mapRef.current) {
+      mapRef.current.setOptions({ draggableCursor: null });
+    }
   };
 
   const handleStatusToggle = async (zoneId, currentIsActive) => {
@@ -358,6 +630,21 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
   };
 
   const handleEdit = (zone) => {
+    // Clear manual drawing state/overlays first
+    isDrawingRef.current = false;
+    setIsDrawing(false);
+    drawPointsRef.current = [];
+    initialDrawDoneRef.current = false;
+    if (polygonRef.current) {
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+    pathMarkersRef.current?.forEach(m => m.setMap(null));
+    pathMarkersRef.current = [];
+    if (mapRef.current) {
+      mapRef.current.setOptions({ draggableCursor: null });
+    }
+
     const zid = zone._id || zone.id;
     setEditingId(zid);
     const localizedNames = typeof zone.name === 'object' && zone.name !== null ? zone.name : {};
@@ -386,7 +673,7 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
     if (Array.isArray(zone.coordinates)) {
       parsedCoords = zone.coordinates.map(coord => {
         if (Array.isArray(coord)) return { lat: coord[1], lng: coord[0] };
-        if (coord && typeof coord === 'object') return { lat: Number(coord.lat), lng: Number(coord.lng) };
+        if (coord && typeof coord === 'object') return { lat: Number(coord.lat || coord.latitude), lng: Number(coord.lng || coord.longitude) };
         return coord;
       });
     }
@@ -441,6 +728,20 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
     loadCountryBoundary();
     return () => { cancelled = true; };
   }, [selectedCountry, view]);
+
+  useEffect(() => {
+    if (editingId && boundaryMode === 'polygon' && polygonCoords.length >= 3 && mapRef.current && window.google && !initialDrawDoneRef.current) {
+      initialDrawDoneRef.current = true;
+      setTimeout(() => {
+        if (mapRef.current && window.google) {
+          isDrawingRef.current = false;
+          setIsDrawing(false);
+          mapRef.current.setOptions({ draggableCursor: null });
+          drawExistingPolygon(window.google, mapRef.current, polygonCoords);
+        }
+      }, 500);
+    }
+  }, [editingId, boundaryMode, polygonCoords.length, isLoaded]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 lg:p-8 animate-in fade-in duration-500">
@@ -703,7 +1004,10 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
                             <button
                               key={option.id}
                               type="button"
-                              onClick={() => setBoundaryMode(option.id)}
+                              onClick={() => {
+                                setBoundaryMode(option.id);
+                                clearDrawing();
+                              }}
                               className={`rounded-lg border px-4 py-3 text-sm font-semibold transition-colors ${
                                 boundaryMode === option.id
                                   ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
@@ -782,15 +1086,31 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
 
                       <div className="flex flex-wrap items-center justify-between gap-3 md:justify-end">
                         <div className="rounded-full bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-500">
-                          State and city labels remain visible while you draw zone boundaries.
+                          {isDrawing
+                            ? boundaryMode === 'circle'
+                              ? "Click anywhere on the map to place the circle center."
+                              : "Click points on the map. Drag points to adjust. Click 'Finish Drawing' when done."
+                            : "Click 'Start Drawing' to begin mapping your zone boundary."}
                         </div>
+                        <button
+                          type="button"
+                          onClick={toggleDrawingMode}
+                          className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[11px] font-black uppercase tracking-widest text-white shadow-sm transition-all active:scale-95 ${
+                            isDrawing
+                              ? 'bg-rose-600 hover:bg-rose-700'
+                              : 'bg-indigo-600 hover:bg-indigo-700'
+                          }`}
+                        >
+                          <Shapes size={14} />
+                          {isDrawing
+                            ? boundaryMode === 'circle'
+                              ? 'Cancel Placement'
+                              : 'Finish Drawing'
+                            : 'Start Drawing'}
+                        </button>
                         <button 
                           type="button"
-                          onClick={() => {
-                            setPolygonCoords([]);
-                            setCircleCenter(null);
-                            setCircleRadiusMeters('');
-                          }}
+                          onClick={clearDrawing}
                           className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-widest text-rose-600 shadow-sm transition-all border border-gray-200 hover:bg-rose-50 active:scale-95"
                         >
                           <X size={14} />
@@ -805,7 +1125,12 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
                          <GoogleMap
                            mapContainerStyle={{ width: '100%', height: '100%' }}
                            center={mapCenter} zoom={12}
-                           onLoad={m => { mapRef.current = m; }}
+                           onLoad={m => {
+                             mapRef.current = m;
+                             window.google.maps.event.addListener(m, 'click', (event) => {
+                               handleMapClick(event);
+                             });
+                           }}
                            options={{
                               mapTypeId: 'roadmap',
                               disableDefaultUI: false,
@@ -815,58 +1140,6 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
                               fullscreenControl: true
                            }}
                          >
-                           <DrawingManager
-                             onPolygonComplete={onPolygonComplete}
-                             options={{
-                               drawingControl: true,
-                               drawingControlOptions: {
-                                 position: window.google.maps.ControlPosition.TOP_RIGHT,
-                                 drawingModes: [
-                                   window.google.maps.drawing.OverlayType.POLYGON,
-                                   window.google.maps.drawing.OverlayType.CIRCLE,
-                                 ],
-                               },
-                               polygonOptions: {
-                                 fillColor: '#4f46e5',
-                                 fillOpacity: 0.15,
-                                 strokeColor: '#4f46e5',
-                                 strokeWeight: 2,
-                                 editable: true,
-                               },
-                               circleOptions: {
-                                 fillColor: '#0f766e',
-                                 fillOpacity: 0.12,
-                                 strokeColor: '#0f766e',
-                                 strokeWeight: 2,
-                                 editable: true,
-                               },
-                             }}
-                             onCircleComplete={onCircleComplete}
-                           />
-                           {boundaryMode === 'polygon' && polygonCoords.length > 0 && (
-                             <Polygon
-                               paths={polygonCoords}
-                               options={{ fillColor: '#4f46e5', strokeColor: '#4f46e5', strokeWeight: 2, fillOpacity: 0.25, editable: true, draggable: true }}
-                               onLoad={(polygon) => {
-                                 polygonListenersRef.current.forEach((listener) => listener?.remove?.());
-                                 polygonListenersRef.current = [];
-                                 polygonRef.current = polygon;
-                                 const path = polygon.getPath();
-                                 polygonListenersRef.current = [
-                                   path.addListener('set_at', syncPolygonState),
-                                   path.addListener('insert_at', syncPolygonState),
-                                   path.addListener('remove_at', syncPolygonState),
-                                   polygon.addListener('dragend', syncPolygonState),
-                                   polygon.addListener('mouseup', syncPolygonState),
-                                 ];
-                               }}
-                               onUnmount={() => {
-                                 polygonListenersRef.current.forEach((listener) => listener?.remove?.());
-                                 polygonListenersRef.current = [];
-                                 polygonRef.current = null;
-                               }}
-                             />
-                           )}
                            {boundaryMode === 'circle' && circleCenter && Number(circleRadiusMeters) > 0 ? (
                              <Circle
                                center={circleCenter}
@@ -897,10 +1170,10 @@ const ZoneManagement = ({ mode: initialMode = "list" }) => {
                              />
                            ) : null}
                            {countryBoundaryPaths.map((path, index) => (
-                              <Polygon
-                                key={index} paths={path}
-                                options={{ strokeColor: '#f43f5e', fillOpacity: 0.05, fillColor: '#f43f5e', strokeWeight: 1.5, strokeDasharray: '5,5', clickable: false }}
-                              />
+                             <Polygon
+                               key={index} paths={path}
+                               options={{ strokeColor: '#f43f5e', fillOpacity: 0.05, fillColor: '#f43f5e', strokeWeight: 1.5, strokeDasharray: '5,5', clickable: false }}
+                             />
                            ))}
                          </GoogleMap>
                        </div>
