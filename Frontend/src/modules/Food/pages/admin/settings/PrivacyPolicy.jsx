@@ -28,10 +28,10 @@ export default function PrivacyPolicy() {
       const response = await api.get(API_ENDPOINTS.ADMIN.PRIVACY, { contextModule: "admin" })
       if (response.data.success) {
         // Convert HTML to plain text for textarea
-        const content = response.data.data.content || ''
+        const content = response.data.data?.content || ''
         const textContent = legalHtmlToPlainText(content)
         setPrivacyData({
-          ...response.data.data,
+          ...(response.data.data || {}),
           content: textContent
         })
       }
@@ -58,10 +58,10 @@ export default function PrivacyPolicy() {
       if (response.data.success) {
         toast.success('Privacy policy updated successfully')
         // Convert HTML to plain text for display in textarea
-        const content = response.data.data.content || ''
+        const content = response.data.data?.content || ''
         const textContent = legalHtmlToPlainText(content)
         setPrivacyData({
-          ...response.data.data,
+          ...(response.data.data || {}),
           content: textContent
         })
       }

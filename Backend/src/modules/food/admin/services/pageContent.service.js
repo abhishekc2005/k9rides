@@ -38,7 +38,18 @@ const normalizeAboutForResponse = (about) => {
 export const getPublicPageByKey = async (key) => {
     const k = normalizeKey(key);
     const doc = await FoodPageContent.findOne({ key: k }).lean();
-    if (!doc) return { key: k, data: null };
+    if (!doc) {
+        if (k === 'about') return { key: k, data: { appName: 'K9 Rides', version: '1.0.0', description: '', logo: '', features: [], stats: [] } };
+        if (k === 'help_support') return { key: k, data: null };
+        const titles = {
+            terms: 'Terms and Conditions',
+            privacy: 'Privacy Policy',
+            refund: 'Refund Policy',
+            shipping: 'Shipping Policy',
+            cancellation: 'Cancellation Policy'
+        };
+        return { key: k, data: { title: titles[k] || k, content: '' } };
+    }
     if (k === 'about') return { key: k, data: normalizeAboutForResponse(doc.about || null) };
     if (k === 'help_support') return { key: k, data: doc.help_support || null };
     return { key: k, data: normalizeLegalForResponse(doc.legal || null) };

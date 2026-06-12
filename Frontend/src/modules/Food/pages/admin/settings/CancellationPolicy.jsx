@@ -28,10 +28,10 @@ export default function CancellationPolicy() {
       const response = await api.get(API_ENDPOINTS.ADMIN.CANCELLATION, { contextModule: "admin" })
       if (response.data.success) {
         // Convert HTML to plain text for textarea
-        const content = response.data.data.content || ''
+        const content = response.data.data?.content || ''
         const textContent = legalHtmlToPlainText(content)
         setCancellationData({
-          ...response.data.data,
+          ...(response.data.data || {}),
           content: textContent
         })
       }
@@ -58,10 +58,10 @@ export default function CancellationPolicy() {
       if (response.data.success) {
         toast.success('Cancellation policy updated successfully')
         // Convert HTML to plain text for display in textarea
-        const content = response.data.data.content || ''
+        const content = response.data.data?.content || ''
         const textContent = legalHtmlToPlainText(content)
         setCancellationData({
-          ...response.data.data,
+          ...(response.data.data || {}),
           content: textContent
         })
       }

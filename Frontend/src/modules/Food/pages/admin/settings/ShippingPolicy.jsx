@@ -28,10 +28,10 @@ export default function ShippingPolicy() {
       const response = await api.get(API_ENDPOINTS.ADMIN.SHIPPING, { contextModule: "admin" })
       if (response.data.success) {
         // Convert HTML to plain text for textarea
-        const content = response.data.data.content || ''
+        const content = response.data.data?.content || ''
         const textContent = legalHtmlToPlainText(content)
         setShippingData({
-          ...response.data.data,
+          ...(response.data.data || {}),
           content: textContent
         })
       }
@@ -58,10 +58,10 @@ export default function ShippingPolicy() {
       if (response.data.success) {
         toast.success('Shipping policy updated successfully')
         // Convert HTML to plain text for display in textarea
-        const content = response.data.data.content || ''
+        const content = response.data.data?.content || ''
         const textContent = legalHtmlToPlainText(content)
         setShippingData({
-          ...response.data.data,
+          ...(response.data.data || {}),
           content: textContent
         })
       }

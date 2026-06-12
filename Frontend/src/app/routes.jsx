@@ -10,6 +10,8 @@ const FoodApp = lazy(() => import('../modules/Food/routes'))
 const TaxiApp = lazy(() => import('../modules/Taxi/TaxiApp'))
 const AuthApp = lazy(() => import('../modules/auth/routes'))
 const HelpSupportPage = lazy(() => import('../modules/auth/pages/HelpSupportPage'))
+const TermsPage = lazy(() => import('../modules/auth/pages/TermsPage'))
+const PrivacyPage = lazy(() => import('../modules/auth/pages/PrivacyPage'))
 import ProtectedRoute from '@food/components/ProtectedRoute'
 
 const PageLoader = () => <AppShellSkeleton />
@@ -107,6 +109,10 @@ const AppRoutes = () => {
 
       {/* Support Module */}
       <Route path="/support" element={<Suspense fallback={<PageLoader />}><HelpSupportPage /></Suspense>} />
+
+      {/* Legal & Policy Modules */}
+      <Route path="/terms" element={<Suspense fallback={<PageLoader />}><TermsPage /></Suspense>} />
+      <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><PrivacyPage /></Suspense>} />
 
 
       {/* Food Module */}
