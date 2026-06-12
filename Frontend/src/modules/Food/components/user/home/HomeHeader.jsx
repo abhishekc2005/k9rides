@@ -344,10 +344,10 @@ export default function HomeHeader({
         </div>
       </div>
 
-      {/* Sticky Search Bar wrapper — position adjusts when categories are also stuck */}
+      {/* Sticky Search Bar wrapper — position adjusts when categories are also stuck (sticky only on mobile/tablet) */}
       <div
-        className={`relative sticky z-[60] px-3 pb-0 -mt-[256px] mb-[210px] pointer-events-none transition-all duration-300 ${
-          isCategoryStuck ? 'top-0 pt-2' : 'top-2'
+        className={`relative sticky md:relative z-[60] px-3 pb-0 -mt-[256px] mb-[210px] pointer-events-none transition-all duration-300 ${
+          isCategoryStuck ? 'top-0 pt-2 md:top-auto' : 'top-2 md:top-auto'
         }`}
       >
         <div 
