@@ -141,3 +141,35 @@ export const env = {
         commissionPercent: Number(process.env.DRIVER_COMMISSION_PERCENT || 20),
     }
 };
+
+export const isOriginAllowed = (origin) => {
+    if (!origin) return true; // Allow non-browser requests (e.g. mobile apps, curl)
+
+    // Parse configured allowed origins
+    const allowed = String(config.socketCorsOrigin || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+    const list = allowed.length > 0 ? allowed : ['https://k9rides.onrender.com'];
+
+    if (list.includes('*') || list.includes(origin)) {
+        return true;
+    }
+
+    try {
+        const url = new URL(origin);
+        if (
+            url.hostname.endsWith('.vercel.app') ||
+            url.hostname.endsWith('.k9rides.com') ||
+            url.hostname === 'k9rides.com' ||
+            url.hostname === 'localhost' ||
+            url.hostname === '127.0.0.1'
+        ) {
+            return true;
+        }
+    } catch (_) {}
+
+    return false;
+};
+
