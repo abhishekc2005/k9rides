@@ -180,7 +180,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
   const amountToCollect = order.pricing?.total || order.amountToCollect || 0;
 
 
-  const checkPaymentSync = useCallback(async () => {
+  const checkPaymentSync = useCallback(async (isManual = false) => {
     try {
       const res = await deliveryAPI.getPaymentStatus(orderId);
       // Handle both response shapes: { data: { payment } } and { data: { data: { payment } } }
@@ -195,15 +195,20 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
         }
         setShowQrModal(false);
         toast.success("Payment Received!");
+      } else if (isManual) {
+        toast.error(`Payment not received yet (${status || 'pending'})`);
       }
     } catch (e) {
       console.error('[PaymentSync] poll failed:', e?.response?.data || e?.message);
+      if (isManual) {
+        toast.error("Failed to check payment status");
+      }
     }
   }, [orderId]);
 
   const handleManualCheck = async () => {
     setIsSyncing(true);
-    await checkPaymentSync();
+    await checkPaymentSync(true);
     setTimeout(() => setIsSyncing(false), 800);
   };
 

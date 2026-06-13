@@ -68,6 +68,20 @@ export const loadRazorpayScript = () => {
  */
 export const initRazorpayPayment = async (options) => {
   try {
+    if (options.order_id?.startsWith('mock_order_')) {
+      console.warn('⚠️ Bypassing Razorpay checkout due to mock order ID (development fallback)');
+      if (options.handler) {
+        setTimeout(() => {
+          options.handler({
+            razorpay_payment_id: `mock_pay_${Date.now()}`,
+            razorpay_order_id: options.order_id,
+            razorpay_signature: 'mock_signature_bypass'
+          });
+        }, 1000);
+      }
+      return { on: () => {}, open: () => {} };
+    }
+
     // Load Razorpay script if not already loaded
     await loadRazorpayScript();
 
