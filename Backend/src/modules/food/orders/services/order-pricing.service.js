@@ -94,17 +94,24 @@ export async function calculateOrderPricing(userId, dto) {
   const feeDoc = await FoodFeeSettings.findOne({ isActive: true })
     .sort({ createdAt: -1 })
     .lean();
-  if (!feeDoc) {
-    throw new ValidationError('Fee settings are not configured. Please configure Delivery & Platform Fee first.');
-  }
-  const feeSettings = feeDoc;
+    
+  const feeSettings = feeDoc || {
+    platformFee: 0,
+    deliveryFeeComputationMode: 'distance_order_value',
+    gstRate: 0,
+    deliveryPartnerIncentiveRule: {
+      isEnabled: false,
+      minOrderAmount: 0,
+      incentivePercent: 0,
+    }
+  };
 
   const packagingFee = 0;
   const configuredPlatformFee = Number(feeSettings.platformFee);
-  if (!Number.isFinite(configuredPlatformFee) || configuredPlatformFee < 0) {
-    throw new ValidationError('Platform fee is not configured. Please save it in Delivery & Platform Fee settings.');
-  }
-  const platformFee = Math.round(configuredPlatformFee * 100) / 100;
+  const platformFee = (!Number.isFinite(configuredPlatformFee) || configuredPlatformFee < 0)
+    ? 0
+    : Math.round(configuredPlatformFee * 100) / 100;
+
   const incentiveRule = feeSettings.deliveryPartnerIncentiveRule || {
     isEnabled: false,
     minOrderAmount: 0,
@@ -122,71 +129,62 @@ export async function calculateOrderPricing(userId, dto) {
   let deliveryPartnerIncentivePercent = Math.round((Number(incentiveRule.incentivePercent || 0) * 100)) / 100;
   let deliveryPartnerIncentiveAmount = 0;
   let deliveryPartnerIncentiveEligible = false;
-  if (mode !== 'distance_order_value') {
-    throw new ValidationError('Distance-based delivery fee settings are not configured.');
-  }
 
   if (mode === 'distance_order_value') {
     const restCoords = extractCoords(restaurant);
     const customerCoords = extractCoords(dto?.address || dto?.deliveryAddress);
-    if (!restCoords && !customerCoords) {
-      throw new ValidationError('Restaurant and customer locations are required for distance-based delivery fee calculation');
-    }
-    if (!restCoords) {
-      throw new ValidationError('Restaurant location is required for distance-based delivery fee calculation');
-    }
-    if (!customerCoords) {
-      throw new ValidationError('Customer location is required for distance-based delivery fee calculation');
-    }
-    const [rLng, rLat] = restCoords;
-    const [cLng, cLat] = customerCoords;
-    const distanceKm = haversineKm(rLat, rLng, cLat, cLng);
-    const distanceRule = await resolveDistanceRule(distanceKm);
-    if (!distanceRule) {
-      throw new ValidationError('No active distance slab found for this delivery distance');
-    }
-    const commissionRows = Array.isArray(feeSettings.distanceSlabAdminDeliveryCommission)
-      ? feeSettings.distanceSlabAdminDeliveryCommission
-      : [];
-    const adminCommissionRow = commissionRows.find((r) => String(r.distanceRuleId) === String(distanceRule._id));
-    const minDistance = Number(distanceRule.minDistance || 0);
-    const isBaseSlab = minDistance <= 0;
-    const userDeliveryFee = Math.round((Number(distanceRule.commissionPerKm || 0) * 100)) / 100;
-    const perKmRate = Number(distanceRule.commissionPerKm || 0);
-    const fixedPayout = Math.round((Number(distanceRule.basePayout || 0) * 100)) / 100;
+    
+    if (restCoords && customerCoords) {
+      const [rLng, rLat] = restCoords;
+      const [cLng, cLat] = customerCoords;
+      const distanceKm = haversineKm(rLat, rLng, cLat, cLng);
+      const distanceRule = await resolveDistanceRule(distanceKm);
+      
+      if (distanceRule) {
+        const commissionRows = Array.isArray(feeSettings.distanceSlabAdminDeliveryCommission)
+          ? feeSettings.distanceSlabAdminDeliveryCommission
+          : [];
+        const adminCommissionRow = commissionRows.find((r) => String(r.distanceRuleId) === String(distanceRule._id));
+        const minDistance = Number(distanceRule.minDistance || 0);
+        const isBaseSlab = minDistance <= 0;
+        const userDeliveryFee = Math.round((Number(distanceRule.commissionPerKm || 0) * 100)) / 100;
+        const perKmRate = Number(distanceRule.commissionPerKm || 0);
+        const fixedPayout = Math.round((Number(distanceRule.basePayout || 0) * 100)) / 100;
 
-    if (isBaseSlab) {
-      deliveryFee = userDeliveryFee > 0 ? userDeliveryFee : 0;
-    } else {
-      const chargeableDistanceKm = Number(distanceKm || 0);
-      deliveryFee = Math.round(Math.max(0, perKmRate * chargeableDistanceKm) * 100) / 100;
-    }
+        if (isBaseSlab) {
+          deliveryFee = userDeliveryFee > 0 ? userDeliveryFee : 0;
+        } else {
+          const chargeableDistanceKm = Number(distanceKm || 0);
+          deliveryFee = Math.round(Math.max(0, perKmRate * chargeableDistanceKm) * 100) / 100;
+        }
 
-    adminDeliveryCommissionEnabled = adminCommissionRow?.isEnabled === true;
-    adminDeliveryCommissionPercent = adminDeliveryCommissionEnabled
-      ? Math.round((Number(adminCommissionRow?.adminDeliveryCommissionPercent || 0) * 100)) / 100
-      : 0;
-    adminDeliveryCommissionAmount = Math.round((deliveryFee * (adminDeliveryCommissionPercent / 100)) * 100) / 100;
-    riderDeliveryEarningAfterAdminCommission = Math.round(Math.max(0, deliveryFee - adminDeliveryCommissionAmount) * 100) / 100;
-    deliveryFeeBreakdown = {
-      source: 'distance_slab',
-      distanceKm: Math.round(Number(distanceKm || 0) * 100) / 100,
-      distanceRuleId: String(distanceRule._id),
-      distanceRange: {
-        minDistance,
-        maxDistance: distanceRule.maxDistance == null ? null : Number(distanceRule.maxDistance)
-      },
-      orderValue: subtotal,
-      appliedDeliveryFee: Number(deliveryFee || 0),
-      feeComputation: isBaseSlab ? 'base_slab_commission_per_km_source' : 'commission_per_km_x_total_distance',
-      userDeliveryFee,
-      basePayout: fixedPayout,
-      commissionPerKm: perKmRate,
-      adminDeliveryCommissionPercent,
-      adminDeliveryCommissionAmount,
-      riderDeliveryEarningAfterAdminCommission,
-      feeSource: isBaseSlab ? 'distance_base_slab' : 'distance_non_base_slab'
-    };
+        adminDeliveryCommissionEnabled = adminCommissionRow?.isEnabled === true;
+        adminDeliveryCommissionPercent = adminDeliveryCommissionEnabled
+          ? Math.round((Number(adminCommissionRow?.adminDeliveryCommissionPercent || 0) * 100)) / 100
+          : 0;
+        adminDeliveryCommissionAmount = Math.round((deliveryFee * (adminDeliveryCommissionPercent / 100)) * 100) / 100;
+        riderDeliveryEarningAfterAdminCommission = Math.round(Math.max(0, deliveryFee - adminDeliveryCommissionAmount) * 100) / 100;
+        deliveryFeeBreakdown = {
+          source: 'distance_slab',
+          distanceKm: Math.round(Number(distanceKm || 0) * 100) / 100,
+          distanceRuleId: String(distanceRule._id),
+          distanceRange: {
+            minDistance,
+            maxDistance: distanceRule.maxDistance == null ? null : Number(distanceRule.maxDistance)
+          },
+          orderValue: subtotal,
+          appliedDeliveryFee: Number(deliveryFee || 0),
+          feeComputation: isBaseSlab ? 'base_slab_commission_per_km_source' : 'commission_per_km_x_total_distance',
+          userDeliveryFee,
+          basePayout: fixedPayout,
+          commissionPerKm: perKmRate,
+          adminDeliveryCommissionPercent,
+          adminDeliveryCommissionAmount,
+          riderDeliveryEarningAfterAdminCommission,
+          feeSource: isBaseSlab ? 'distance_base_slab' : 'distance_non_base_slab'
+        };
+      }
+    }
   }
 
   const incentiveThreshold = Math.round((Number(incentiveRule.minOrderAmount || 0) * 100)) / 100;
@@ -200,13 +198,8 @@ export async function calculateOrderPricing(userId, dto) {
     : 0;
 
   const gstRate = Number(feeSettings.gstRate);
-  if (!Number.isFinite(gstRate) || gstRate < 0) {
-    throw new ValidationError('GST rate is not configured. Please save it in Delivery & Platform Fee settings.');
-  }
-  const tax =
-    Number.isFinite(gstRate) && gstRate > 0
-      ? Math.round(subtotal * (gstRate / 100))
-      : 0;
+  const validGstRate = (!Number.isFinite(gstRate) || gstRate < 0) ? 0 : gstRate;
+  const tax = Math.round(subtotal * (validGstRate / 100));
 
   let discount = 0;
   let appliedCoupon = null;
