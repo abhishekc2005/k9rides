@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
+import { toast } from "react-hot-toast"
+import { extractRawPhone } from "../../../../../utils/phone.util"
 import { Loader2, AlertCircle } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { restaurantAPI } from "@food/api"
@@ -16,7 +18,7 @@ export default function RestaurantLogin() {
   const [formData, setFormData] = useState(() => {
     const saved = sessionStorage.getItem("restaurantLoginPhone")
     return {
-      phone: saved || "",
+      phone: saved ? extractRawPhone(saved) : "",
       countryCode: DEFAULT_COUNTRY_CODE,
     }
   })
@@ -44,8 +46,8 @@ export default function RestaurantLogin() {
   }, [])
 
   const validatePhone = (phone) => {
-    if (!phone || phone.trim() === "") return "Phone number required"
-    const digitsOnly = phone.replace(/\D/g, "")
+    const digitsOnly = extractRawPhone(phone)
+    if (!digitsOnly || digitsOnly.trim() === "") return "Phone number required"
     if (digitsOnly.length !== 10) return "Must be 10 digits"
     if (!["6", "7", "8", "9"].includes(digitsOnly[0])) return "Invalid number"
     return ""
@@ -65,7 +67,7 @@ export default function RestaurantLogin() {
       return
     }
 
-    const fullPhone = `${formData.countryCode} ${formData.phone}`.trim()
+    const fullPhone = `${formData.countryCode} ${extractRawPhone(formData.phone)}`.trim()
 
     try {
       setIsSending(true)
@@ -143,7 +145,6 @@ export default function RestaurantLogin() {
                 <input
                   ref={phoneInputRef}
                   type="tel"
-                  maxLength={10}
                   inputMode="numeric"
                   placeholder="00000 00000"
                   value={formData.phone}

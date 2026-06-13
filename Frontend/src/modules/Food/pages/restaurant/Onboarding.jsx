@@ -23,22 +23,24 @@ import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
 import { clearModuleAuth, clearAuthData } from "@food/utils/auth"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
+import { handlePhoneInput, formatDisplayPhone, extractRawPhone } from "../../../../utils/phone.util"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
+
+const FSSAI_NUMBER_REGEX = /^\d{14}$/
+const GST_NUMBER_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
+const GST_LEGAL_NAME_REGEX = /^[a-zA-Z\s]*$/
+const BANK_ACCOUNT_NUMBER_REGEX = /^\d{9,18}$/
+const IFSC_CODE_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/
+const ACCOUNT_HOLDER_NAME_REGEX = /^[a-zA-Z\s]*$/
+const PAN_NUMBER_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/
+const OWNER_NAME_REGEX = /^[a-zA-Z\s]*$/
 
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 const ONBOARDING_STORAGE_KEY = "restaurant_onboarding_data"
-const PAN_NUMBER_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
-const GST_NUMBER_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
-const FSSAI_NUMBER_REGEX = /^\d{14}$/
-const BANK_ACCOUNT_NUMBER_REGEX = /^\d{9,18}$/
-const IFSC_CODE_REGEX = /^[A-Z0-9]{11}$/
-const OWNER_NAME_REGEX = /^[A-Za-z ]+$/
-const ACCOUNT_HOLDER_NAME_REGEX = /^[A-Za-z ]+$/
-const GST_LEGAL_NAME_REGEX = /^[A-Za-z ]+$/
 const LOCAL_IMAGE_FILE_ACCEPT = ".jpg,.jpeg,.png,.webp,.heic,.heif"
 const GALLERY_IMAGE_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
@@ -172,7 +174,7 @@ const getVerifiedPhoneFromStoredRestaurant = () => {
   try {
     const pending = localStorage.getItem("restaurant_pendingPhone")
     if (pending && pending.trim()) {
-      return pending.trim()
+      return formatDisplayPhone(pending.trim())
     }
 
     const storedUser = localStorage.getItem("restaurant_user")
@@ -190,7 +192,7 @@ const getVerifiedPhoneFromStoredRestaurant = () => {
       user?.restaurant?.phone,
     ]
     const phone = candidates.find((value) => typeof value === "string" && value.trim())
-    return phone ? phone.trim() : ""
+    return phone ? formatDisplayPhone(phone.trim()) : ""
   } catch {
     return ""
   }
@@ -242,7 +244,11 @@ const saveOnboardingToLocalStorage = (step1, step2, step3, currentStep) => {
     }
 
     const dataToSave = {
-      step1,
+      step1: {
+        ...step1,
+        ownerPhone: extractRawPhone(step1.ownerPhone),
+        primaryContactNumber: extractRawPhone(step1.primaryContactNumber)
+      },
       step2: serializableStep2,
       step3: serializableStep3,
       currentStep,
@@ -854,8 +860,8 @@ export default function RestaurantOnboarding() {
                   : null,
               ownerName: localData.step1.ownerName || "",
               ownerEmail: localData.step1.ownerEmail || "",
-              ownerPhone: localData.step1.ownerPhone || "",
-              primaryContactNumber: localData.step1.primaryContactNumber || "",
+              ownerPhone: formatDisplayPhone(localData.step1.ownerPhone || ""),
+              primaryContactNumber: formatDisplayPhone(localData.step1.primaryContactNumber || ""),
               zoneId: localData.step1.zoneId || "",
               location: {
                 formattedAddress: localData.step1.location?.formattedAddress || "",
@@ -1018,6 +1024,7 @@ export default function RestaurantOnboarding() {
         // Use restaurantAPI.getCurrentRestaurant() to fetch real data
         const res = await restaurantAPI.getCurrentRestaurant()
         const data = res?.data?.data?.restaurant || res?.data?.restaurant
+        const loginPhone = res?.data?.data?.phone || res?.data?.phone
         
           if (data) {
             setHasExistingRestaurantProfile(true)
@@ -1033,46 +1040,35 @@ export default function RestaurantOnboarding() {
             const deliveryTimings = step2Data.deliveryTimings || data.deliveryTimings || {}
 
             setIsEditing(true)
-            // Map Step 1 (Merging with local state)
-            setStep1((prev) => ({
-              ...prev,
-              restaurantName: step1Data.restaurantName || data.name || data.restaurantName || prev.restaurantName || "",
-              pureVegRestaurant:
-                typeof step1Data.pureVegRestaurant === "boolean"
-                  ? step1Data.pureVegRestaurant
-                  : typeof data.pureVegRestaurant === "boolean"
-                  ? data.pureVegRestaurant
-                  : prev.pureVegRestaurant,
-              ownerName: step1Data.ownerName || data.ownerName || prev.ownerName || "",
-              ownerEmail: step1Data.ownerEmail || data.ownerEmail || data.email || prev.ownerEmail || "",
-              ownerPhone: step1Data.ownerPhone || data.ownerPhone || data.phone || prev.ownerPhone || "",
-              zoneId: step1Data.zoneId || data.zoneId || prev.zoneId || "",
-              primaryContactNumber:
-                step1Data.primaryContactNumber ||
-                data.primaryContactNumber ||
-                data.ownerPhone ||
-                data.phone ||
-                prev.primaryContactNumber ||
-                "",
+            
+            const normalizedData = {
+              restaurantName: step1Data.restaurantName || data.name || data.restaurantName || "",
+              pureVegRestaurant: typeof step1Data.pureVegRestaurant === 'boolean' ? step1Data.pureVegRestaurant : (typeof data.pureVegRestaurant === 'boolean' ? data.pureVegRestaurant : null),
+              ownerName: step1Data.ownerName || data.ownerName || "",
+              ownerEmail: step1Data.ownerEmail || data.ownerEmail || data.email || "",
+              ownerPhone: formatDisplayPhone(step1Data.ownerPhone || data.ownerPhone || data.phone || loginPhone || ""),
+              primaryContactNumber: formatDisplayPhone(step1Data.primaryContactNumber || data.primaryContactNumber || data.ownerPhone || data.phone || ""),
+              zoneId: step1Data.zoneId || data.zoneId || "",
               location: {
-                ...prev.location,
-                formattedAddress:
-                  locationData.formattedAddress ||
-                  locationData.address ||
-                  data.address ||
-                  prev.location?.formattedAddress ||
-                  "",
-                addressLine1: locationData.addressLine1 || data.addressLine1 || prev.location?.addressLine1 || "",
-                addressLine2: locationData.addressLine2 || data.addressLine2 || prev.location?.addressLine2 || "",
-                area: locationData.area || data.area || prev.location?.area || "",
-                city: locationData.city || data.city || prev.location?.city || "",
-                state: locationData.state || data.state || prev.location?.state || "",
-                pincode: locationData.pincode || data.pincode || prev.location?.pincode || "",
-                landmark: locationData.landmark || data.landmark || prev.location?.landmark || "",
-                latitude: locationData.latitude ?? prev.location?.latitude ?? "",
-                longitude: locationData.longitude ?? prev.location?.longitude ?? "",
-              },
-            }))
+                addressLine1: locationData.addressLine1 || data.addressLine1 || "",
+                addressLine2: locationData.addressLine2 || data.addressLine2 || "",
+                landmark: locationData.landmark || data.landmark || "",
+                area: locationData.area || data.area || "",
+                city: locationData.city || data.city || "",
+                state: locationData.state || data.state || "",
+                pincode: locationData.pincode || data.pincode || "",
+                latitude: locationData.latitude || "",
+                longitude: locationData.longitude || "",
+                formattedAddress: locationData.formattedAddress || locationData.address || data.address || "",
+              }
+            }
+            
+            // Set verified phone number based on login phone, format it
+            if (loginPhone) {
+              setVerifiedPhoneNumber(formatDisplayPhone(loginPhone))
+            }
+            
+            setStep1(normalizedData)
 
             // Map Step 2
             setStep2((prev) => ({
@@ -1553,10 +1549,10 @@ export default function RestaurantOnboarding() {
             <Label className="text-xs text-gray-700">Phone number*</Label>
             <Input
               value={step1.ownerPhone || ""}
-              onChange={(e) => setStep1({ ...step1, ownerPhone: e.target.value })}
+              onChange={(e) => setStep1({ ...step1, ownerPhone: handlePhoneInput(e.target.value) })}
               readOnly={Boolean(verifiedPhoneNumber)}
               className="mt-1 bg-white text-sm text-black placeholder-black"
-              placeholder="+91 98XXXXXX"
+              placeholder="+91 XXXXXXXXXX"
               disabled={!isEditing}
             />
           </div>
@@ -1570,22 +1566,10 @@ export default function RestaurantOnboarding() {
           <Input
             value={step1.primaryContactNumber || ""}
             onChange={(e) => {
-              const val = e.target.value.replace(/\D/g, "").slice(0, 10)
-              setStep1({ ...step1, primaryContactNumber: val })
+              setStep1({ ...step1, primaryContactNumber: handlePhoneInput(e.target.value) })
             }}
-            onKeyDown={(e) => {
-              const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter"]
-              if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault()
-              if (/^\d$/.test(e.key) && (step1.primaryContactNumber || "").length >= 10) e.preventDefault()
-            }}
-            onPaste={(e) => {
-              e.preventDefault()
-              const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 10)
-              setStep1({ ...step1, primaryContactNumber: pasted })
-            }}
-            inputMode="numeric"
             className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="Restaurant's primary contact number"
+            placeholder="+91 XXXXXXXXXX"
             disabled={!isEditing}
           />
           <p className="text-[11px] text-gray-500 mt-1">

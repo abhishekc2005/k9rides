@@ -157,6 +157,10 @@ export default function DeliveryOTP() {
       const response = await deliveryAPI.verifyOTP(phone, code, purpose, null, fcmToken, platform)
       const data = response?.data?.data || response?.data || {}
       if (data.pendingApproval === true) {
+        if (data.isRejected) {
+           sessionStorage.setItem("deliveryNeedsRegistration", "true")
+           sessionStorage.setItem("deliverySignupDetails", JSON.stringify({ name: "", phone: authData?.phone?.replace(/\D/g, "").slice(-10) || "", countryCode: "+91" }))
+        }
         setIsLoading(false); setPendingMessage(data.message); setIsRejected(data.isRejected || false); setRejectionReason(data.rejectionReason || "");
         return
       }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { RefreshCw, AlertCircle } from "lucide-react"
+import { RefreshCw, AlertCircle, ShieldCheck } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { restaurantAPI } from "@food/api"
 import {
@@ -23,6 +23,9 @@ export default function RestaurantOTP() {
   const [contactInfo, setContactInfo] = useState("") 
   const [focusedIndex, setFocusedIndex] = useState(null)
   const [keyboardOffset, setKeyboardOffset] = useState(0)
+  const [pendingMessage, setPendingMessage] = useState("")
+  const [isRejected, setIsRejected] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState("")
   const inputRefs = useRef([])
   const hasSubmittedRef = useRef(false)
   const otpSectionRef = useRef(null)
@@ -88,13 +91,6 @@ export default function RestaurantOTP() {
     if (value && index < 3) {
       inputRefs.current[index + 1]?.focus()
     }
-
-    if (newOtp.every((digit) => digit !== "") && newOtp.length === 4) {
-      if (!hasSubmittedRef.current) {
-        hasSubmittedRef.current = true
-        handleVerify(newOtp.join(""))
-      }
-    }
   }
 
   const handleKeyDown = (index, e) => {
@@ -119,8 +115,11 @@ export default function RestaurantOTP() {
     const newOtp = [...otp]
     digits.forEach((digit, i) => { if (i < 4) newOtp[i] = digit })
     setOtp(newOtp)
-    if (digits.length === 4) handleVerify(newOtp.join(""))
-    else inputRefs.current[digits.length]?.focus()
+    if (digits.length === 4) {
+      inputRefs.current[3]?.focus()
+    } else {
+      inputRefs.current[digits.length]?.focus()
+    }
   }
 
   const handleVerify = async (otpValue = null) => {
@@ -145,6 +144,17 @@ export default function RestaurantOTP() {
       const data = response?.data?.data || response?.data
       const needsRegistration = data?.needsRegistration === true
       const normalizedPhone = data?.phone || phone
+
+      if (data?.pendingApproval === true) {
+        setIsLoading(false)
+        setPendingMessage(data.message)
+        setIsRejected(data.isRejected || false)
+        setRejectionReason(data.rejectionReason || "")
+        if (data.isRejected) {
+          setRestaurantPendingPhone(data.phone || phone)
+        }
+        return
+      }
 
       if (needsRegistration) {
         setRestaurantPendingPhone(normalizedPhone)
@@ -232,7 +242,7 @@ export default function RestaurantOTP() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="relative z-10 flex flex-col items-center gap-4 px-6 text-center"
+          className="relative z-10 flex flex-col items-center gap-4 px-6 text-center pb-12"
         >
           <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center border border-white/25 shadow-lg mb-2 overflow-hidden">
             <img src={logoImg} alt={`${companyName} logo`} className="w-full h-full object-cover scale-110" />

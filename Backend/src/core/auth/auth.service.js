@@ -390,11 +390,19 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
 
   // If restaurant approval status is used, only allow login for approved restaurants.
   if (restaurantDoc.status && restaurantDoc.status !== "approved") {
-    throw new AuthError(
-      restaurantDoc.status === "pending"
-        ? "Your restaurant registration is pending approval."
-        : "Your restaurant registration has been rejected. Please contact support.",
-    );
+    const isRejected = restaurantDoc.status === "rejected";
+    return {
+      pendingApproval: true,
+      isRejected,
+      rejectionReason: isRejected ? restaurantDoc.rejectionReason : null,
+      message:
+        isRejected
+          ? (restaurantDoc.rejectionReason 
+              ? `Your restaurant registration was rejected: ${restaurantDoc.rejectionReason}`
+              : "Your restaurant registration has been rejected. Please contact support.")
+          : "Your restaurant registration is pending approval.",
+      phone: phone
+    };
   }
 
   const payload = { userId: restaurantDoc._id.toString(), role: ROLES.RESTAURANT };
@@ -502,6 +510,7 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
               ? `Your account was rejected: ${deliveryPartner.rejectionReason}`
               : "Your delivery account was not approved. Please contact support.")
           : "Your account is pending admin verification. You will be notified once approved.",
+      phone: phone
     };
   }
 
