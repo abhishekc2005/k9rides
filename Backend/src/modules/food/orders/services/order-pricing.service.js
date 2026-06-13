@@ -134,25 +134,32 @@ export async function calculateOrderPricing(userId, dto) {
     const restCoords = extractCoords(restaurant);
     const customerCoords = extractCoords(dto?.address || dto?.deliveryAddress);
     
+    let distanceRule = null;
+    let distanceKm = 0;
+    
     if (restCoords && customerCoords) {
       const [rLng, rLat] = restCoords;
       const [cLng, cLat] = customerCoords;
-      const distanceKm = haversineKm(rLat, rLng, cLat, cLng);
-      const distanceRule = await resolveDistanceRule(distanceKm);
-      
-      if (distanceRule) {
+      distanceKm = haversineKm(rLat, rLng, cLat, cLng);
+      distanceRule = await resolveDistanceRule(distanceKm);
+    } else {
+      // Fallback: If coordinates are missing, assume base distance (0 km) to apply base delivery fee
+      distanceRule = await resolveDistanceRule(0);
+    }
+    
+    if (distanceRule) {
         const commissionRows = Array.isArray(feeSettings.distanceSlabAdminDeliveryCommission)
           ? feeSettings.distanceSlabAdminDeliveryCommission
           : [];
         const adminCommissionRow = commissionRows.find((r) => String(r.distanceRuleId) === String(distanceRule._id));
         const minDistance = Number(distanceRule.minDistance || 0);
         const isBaseSlab = minDistance <= 0;
-        const userDeliveryFee = Math.round((Number(distanceRule.commissionPerKm || 0) * 100)) / 100;
+        const userDeliveryFee = Math.round((Number(distanceRule.userDeliveryFee || 0) * 100)) / 100;
         const perKmRate = Number(distanceRule.commissionPerKm || 0);
         const fixedPayout = Math.round((Number(distanceRule.basePayout || 0) * 100)) / 100;
 
-        if (isBaseSlab) {
-          deliveryFee = userDeliveryFee > 0 ? userDeliveryFee : 0;
+        if (userDeliveryFee > 0) {
+          deliveryFee = userDeliveryFee;
         } else {
           const chargeableDistanceKm = Number(distanceKm || 0);
           deliveryFee = Math.round(Math.max(0, perKmRate * chargeableDistanceKm) * 100) / 100;
@@ -184,7 +191,6 @@ export async function calculateOrderPricing(userId, dto) {
           feeSource: isBaseSlab ? 'distance_base_slab' : 'distance_non_base_slab'
         };
       }
-    }
   }
 
   const incentiveThreshold = Math.round((Number(incentiveRule.minOrderAmount || 0) * 100)) / 100;
