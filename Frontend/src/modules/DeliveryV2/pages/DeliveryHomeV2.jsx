@@ -197,7 +197,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                 lat, 
                 lng, 
                 heading, 
-                orderId: activeOrder?.orderId || activeOrder?._id,
+                orderId: activeOrder?.orderMongoId || activeOrder?._id || activeOrder?.orderId,
                 status: 'on_the_way',
                 polyline: activePolyline // Include polyline in every stream update for resilience
               };
@@ -208,8 +208,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
               if (payload.orderId) emitLocation(payload);
 
               // C. FIREBASE REALTIME DB (Persistent Route for Customer Map)
-              if (payload.orderId) {
-                writeOrderTracking(payload.orderId, { 
+              const streamOrderId = activeOrder?.orderMongoId || activeOrder?._id || activeOrder?.orderId;
+              if (streamOrderId) {
+                writeOrderTracking(streamOrderId, { 
                   lat, 
                   lng, 
                   heading, 
@@ -413,7 +414,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           heading: heading || 0,
           speed: speed || 0,
           accuracy: pos.coords.accuracy,
-          orderId: activeOrder?.orderId || activeOrder?._id,
+          orderId: activeOrder?.orderMongoId || activeOrder?._id || activeOrder?.orderId,
           status: 'on_the_way',
           polyline: activePolyline
         };
@@ -429,8 +430,9 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         if (payload.orderId) emitLocation(payload);
 
         // C. FIREBASE REALTIME DB (Persistent)
-        if (payload.orderId) {
-          writeOrderTracking(payload.orderId, {
+        const streamOrderId = activeOrder?.orderMongoId || activeOrder?._id || activeOrder?.orderId;
+        if (streamOrderId) {
+          writeOrderTracking(streamOrderId, {
             lat,
             lng,
             heading: heading || 0,
@@ -440,10 +442,18 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           }).catch(() => {});
         }
       }
-    }, () => toast.error('GPS Needed!'), { 
+    }, (err) => {
+      // Only show error if we don't have a recent location or if it's a critical permission denial
+      if (err.code === err.PERMISSION_DENIED) {
+        toast.error('GPS Permission Denied! Please enable it in settings.');
+      } else if (!lastCoordRef.current) {
+        // We only annoy the user if we have NEVER gotten a GPS lock
+        toast.warning('Searching for GPS signal...');
+      }
+    }, { 
       enableHighAccuracy: true,
       maximumAge: 0,
-      timeout: 5000
+      timeout: 15000
     });
     
     return () => navigator.geolocation.clearWatch(watchId);

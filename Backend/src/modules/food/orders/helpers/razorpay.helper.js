@@ -9,7 +9,8 @@ try {
 }
 
 import { config } from '../../../../config/env.js';
-
+import { logger } from '../../../../utils/logger.js';
+import { normalizePhoneToTenDigits } from '../../../../utils/phone.util.js';
 const KEY_ID = String(config.razorpayKeyId || process.env.RAZORPAY_KEY_ID || '').trim();
 const KEY_SECRET = String(config.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET || '').trim();
 
@@ -76,18 +77,25 @@ export async function createRazorpayCheckoutOrder(amountPaise, currency = 'INR',
 export function createPaymentLink({ amountPaise, currency = 'INR', description, orderId, customerName, customerEmail, customerPhone }) {
     const instance = getRazorpayInstance();
     if (!instance) return Promise.reject(new Error('Razorpay not configured'));
+
+    const contact = normalizePhoneToTenDigits(customerPhone);
+    const payload = {
+        amount: Math.round(amountPaise),
+        currency,
+        description: description || `Order ${orderId}`,
+        customer: {
+            name: customerName || 'Customer',
+            email: customerEmail || 'customer@example.com',
+            contact
+        }
+    };
+
+    logger.info(`[Razorpay] Creating Payment Link for Order ${orderId}: Amount ${amountPaise} Paise, Contact: ${contact}`);
+
     return instance.paymentLink
-        .create({
-            amount: Math.round(amountPaise),
-            currency,
-            description: description || `Order ${orderId}`,
-            customer: {
-                name: customerName || 'Customer',
-                email: customerEmail || 'customer@example.com',
-                contact: customerPhone ? String(customerPhone).replace(/\D/g, '').slice(-10) : '9999999999'
-            }
-        })
+        .create(payload)
         .catch((error) => {
+            logger.error(`[Razorpay] Payment Link Failed for Order ${orderId}: ${JSON.stringify(error?.error || error)}`);
             throw new Error(getRazorpayErrorMessage(error));
         });
 }

@@ -12,7 +12,7 @@ export const useOrderManager = () => {
   } = useDeliveryStore();
 
   const acceptOrder = async (order) => {
-    const orderId = order?.orderId || order?._id || order?.id;
+    const orderId = order?.orderMongoId || order?._id || order?.orderId || order?.id;
     if (!orderId) {
       toast.error('Invalid order data');
       return;
@@ -59,7 +59,8 @@ export const useOrderManager = () => {
 
         setActiveOrder({
           ...fullOrder,
-          orderId: orderId,
+          orderId: fullOrder.orderId || orderId,
+          orderMongoId: fullOrder.orderMongoId || fullOrder._id || orderId,
           restaurantLocation: resLoc,
           customerLocation: cusLoc
         });
@@ -81,7 +82,7 @@ export const useOrderManager = () => {
    * Mark "Reached Pickup" (Arrival at restaurant)
    */
   const reachPickup = async () => {
-    const orderId = activeOrder?.orderId;
+    const orderId = activeOrder?.orderMongoId || activeOrder?._id || activeOrder?.orderId;
     try {
       const response = await deliveryAPI.confirmReachedPickup(orderId);
       if (response?.data?.success) {
@@ -100,7 +101,7 @@ export const useOrderManager = () => {
    * Mark "Picked Up" (Confirm order ID & start delivery)
    */
   const pickUpOrder = async (billImageUrl) => {
-    const orderId = activeOrder?.orderId;
+    const orderId = activeOrder?.orderMongoId || activeOrder?._id || activeOrder?.orderId;
     try {
       // confirmOrderId(orderId, confirmedOrderId, location, data)
       const response = await deliveryAPI.confirmOrderId(
@@ -126,7 +127,7 @@ export const useOrderManager = () => {
    * Mark "Reached Drop" (Arrival at customer)
    */
   const reachDrop = async () => {
-    const orderId = activeOrder?.orderId;
+    const orderId = activeOrder?.orderMongoId || activeOrder?._id || activeOrder?.orderId;
     try {
       const response = await deliveryAPI.confirmReachedDrop(orderId);
       if (response?.data?.success) {
@@ -145,7 +146,7 @@ export const useOrderManager = () => {
    * Finalize Delivery with OTP Check
    */
   const completeDelivery = async (otp) => {
-    const orderId = activeOrder?.orderId;
+    const orderId = activeOrder?.orderMongoId || activeOrder?._id || activeOrder?.orderId;
     try {
       // 1. Verify OTP first
       const verifyRes = await deliveryAPI.verifyDropOtp(orderId, otp);

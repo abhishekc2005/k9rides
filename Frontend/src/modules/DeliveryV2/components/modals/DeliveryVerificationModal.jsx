@@ -65,7 +65,7 @@ const OtpModal = ({ order, onVerified, onClose }) => {
     return () => clearTimeout(timer);
   }, [order?.deliveryVerification?.dropOtp?.code]);
 
-  const orderId = order.orderId || order._id || 'ORD';
+  const orderId = order.orderMongoId || order._id || order.orderId || 'ORD';
 
   const handleOtpChange = (index, value) => {
     if (value && !/^\d+$/.test(value)) return;
@@ -176,7 +176,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
   const [isSwitchingToCash, setIsSwitchingToCash] = useState(false);
   const pollingRef = useRef(null);
 
-  const orderId = order.orderId || order._id || 'ORD';
+  const orderId = order?.orderMongoId || order?._id || order?.orderId || 'ORD';
   const amountToCollect = order.pricing?.total || order.amountToCollect || 0;
 
 
@@ -247,7 +247,9 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
         toast.error("Could not generate QR code");
       }
     } catch (e) {
-      toast.error("QR Generation failed");
+      const msg = e?.response?.data?.message || e?.response?.data?.error || e?.message || "QR Generation failed";
+      toast.error(`QR Generation failed: ${msg}`);
+      console.error("QR Generation error", e?.response?.data || e);
     } finally {
       setIsGeneratingQr(false);
     }

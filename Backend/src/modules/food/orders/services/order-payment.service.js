@@ -99,9 +99,8 @@ export async function createCollectQr(
   deliveryPartnerId,
   customerInfo = {},
 ) {
-  const query = mongoose.Types.ObjectId.isValid(orderId)
-    ? { _id: orderId }
-    : { orderId };
+  const query = buildOrderIdentityFilter(orderId);
+  if (!query) throw new ValidationError('Order id required');
 
   const order = await FoodOrder.findOne(query)
     .populate('userId', 'name email phone')
@@ -133,7 +132,7 @@ export async function createCollectQr(
     orderId: order._id.toString(),
     customerName: customerInfo.name || user.name || 'Customer',
     customerEmail: customerInfo.email || user.email || 'customer@example.com',
-    customerPhone: customerInfo.phone || user.phone,
+    customerPhone: customerInfo.phone || user.phone || order.customerPhone || order.deliveryAddress?.phone || '',
   });
 
 
