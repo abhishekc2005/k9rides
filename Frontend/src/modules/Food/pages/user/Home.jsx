@@ -36,6 +36,7 @@ import {
   Loader2,
   Plus,
   Check,
+  ChevronDown,
   Share2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -89,7 +90,7 @@ import { useLocation } from "@food/hooks/useLocation";
 import { useZone } from "@food/hooks/useZone";
 import quickSpicyLogo from "@food/assets/k9-logo.jpg";
 import offerImage from "@food/assets/offerimage.png";
-import api, { publicGetOnce, restaurantAPI, adminAPI } from "@food/api";
+import api, { publicGetOnce, restaurantAPI, adminAPI, orderAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
 import OptimizedImage from "@food/components/OptimizedImage";
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
@@ -1251,6 +1252,68 @@ export default function Home() {
     touchEndX.current = 0;
     touchEndY.current = 0;
   };
+  const [previouslyOrderedRestaurants, setPreviouslyOrderedRestaurants] = useState([]);
+  const [loadingPreviouslyOrdered, setLoadingPreviouslyOrdered] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPastOrders = async () => {
+      const isAuth =
+        localStorage.getItem("user_accessToken") ||
+        localStorage.getItem("user_authenticated") === "true" ||
+        localStorage.getItem("accessToken");
+      if (!isAuth) return;
+      setLoadingPreviouslyOrdered(true);
+      try {
+        const response = await orderAPI.getOrders({ limit: 50, page: 1 });
+        if (!isMounted) return;
+
+        let rawOrders = [];
+        if (response?.data?.success && response?.data?.data?.orders) {
+          rawOrders = response.data.data.orders;
+        } else if (response?.data?.orders) {
+          rawOrders = response.data.orders;
+        } else if (response?.data?.data && Array.isArray(response.data.data)) {
+          rawOrders = response.data.data;
+        }
+
+        const map = new Map();
+        rawOrders.forEach((order) => {
+          const rest = order.restaurantId;
+          if (rest && rest._id && !map.has(rest._id)) {
+            const deliveryTime = rest.estimatedDeliveryTime || rest.deliveryTime || "25-30 mins";
+            const coverImages = Array.isArray(rest.coverImages)
+              ? rest.coverImages
+              : [rest.coverImage || rest.profileImage].filter(Boolean);
+            map.set(rest._id, {
+              id: rest.restaurantId || rest._id,
+              mongoId: rest._id,
+              name: getRestaurantDisplayName(rest),
+              coverImages: coverImages,
+              profileImage: rest.profileImage || rest.image || "",
+              rating: Number(rest.rating) || 0,
+              deliveryTime: deliveryTime,
+              slug: rest.slug || rest._id,
+              cuisines: Array.isArray(rest.cuisines) ? rest.cuisines : [],
+              cuisine: rest.cuisines?.[0] || "Multi-cuisine",
+            });
+          }
+        });
+        setPreviouslyOrderedRestaurants(Array.from(map.values()));
+      } catch (err) {
+        debugError("Failed to fetch past orders", err);
+      } finally {
+        if (isMounted) {
+          setLoadingPreviouslyOrdered(false);
+        }
+      }
+    };
+    fetchPastOrders();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const [activeFilters, setActiveFilters] = useState(new Set());
   const [sortBy, setSortBy] = useState(null); // null, 'price-low', 'price-high', 'rating-high', 'rating-low'
   const [selectedCuisine, setSelectedCuisine] = useState(null);
@@ -1551,6 +1614,17 @@ export default function Home() {
   const toggleFilter = (filterId) => {
     setActiveFilters((prev) => {
       const newSet = new Set(prev);
+      if (filterId === "rating-4-plus") {
+        newSet.delete("rating-35-plus");
+        newSet.delete("rating-45-plus");
+      } else if (filterId === "rating-35-plus") {
+        newSet.delete("rating-4-plus");
+        newSet.delete("rating-45-plus");
+      } else if (filterId === "rating-45-plus") {
+        newSet.delete("rating-4-plus");
+        newSet.delete("rating-35-plus");
+      }
+
       if (newSet.has(filterId)) {
         newSet.delete(filterId);
       } else {
@@ -1559,6 +1633,7 @@ export default function Home() {
       return newSet;
     });
   };
+
 
   // Refs for scroll tracking
   const filterSectionRefs = useRef({});
@@ -2029,6 +2104,31 @@ export default function Home() {
     },
     [activeFilters, sortBy, selectedCuisine, fetchRestaurants],
   );
+
+  const handleToggleHorizontalFilter = useCallback((filterId) => {
+    setActiveFilters((prev) => {
+      const nextActiveFilters = new Set(prev);
+      if (filterId === "rating-4-plus") {
+        nextActiveFilters.delete("rating-35-plus");
+        nextActiveFilters.delete("rating-45-plus");
+      } else if (filterId === "rating-35-plus") {
+        nextActiveFilters.delete("rating-4-plus");
+        nextActiveFilters.delete("rating-45-plus");
+      } else if (filterId === "rating-45-plus") {
+        nextActiveFilters.delete("rating-4-plus");
+        nextActiveFilters.delete("rating-35-plus");
+      }
+
+      if (nextActiveFilters.has(filterId)) {
+        nextActiveFilters.delete(filterId);
+      } else {
+        nextActiveFilters.add(filterId);
+      }
+
+      applyFiltersAndRefetch(nextActiveFilters, sortBy, selectedCuisine);
+      return nextActiveFilters;
+    });
+  }, [sortBy, selectedCuisine, applyFiltersAndRefetch]);
 
   // Fetch restaurants when appliedFilters change
   useEffect(() => {
@@ -2797,10 +2897,158 @@ export default function Home() {
           />
         )}
 
-        {/* Category Rail â€” permanently sticky using native CSS for 0 latency. */}
+        {/* Category Rail — permanently sticky using native CSS for 0 latency. */}
         <div className="sticky top-[72px] z-[50]">
           {CategoryRailSection}
         </div>
+
+        {/* Horizontal Filters Row */}
+        <div className="px-4 py-3 flex items-center gap-2 overflow-x-auto scrollbar-hide select-none bg-white dark:bg-[#0a0a0a] border-b border-gray-100 dark:border-gray-900">
+          {/* Pill 1: Filters */}
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all duration-300 hover:scale-105 active:scale-95 flex-shrink-0 ${
+              activeFilters.size > 0 || sortBy || selectedCuisine
+                ? "bg-[#FFF2EB] dark:bg-orange-950/20 border-[#EB590E] text-[#EB590E] shadow-sm"
+                : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700"
+            }`}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>Filters</span>
+            {activeFilters.size > 0 && (
+              <span className="ml-1 bg-[#EB590E] text-white text-[9px] h-4 w-4 rounded-full flex items-center justify-center font-bold">
+                {activeFilters.size}
+              </span>
+            )}
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </button>
+
+          {/* Pill 2: Rating 4.0+ */}
+          <button
+            onClick={() => handleToggleHorizontalFilter("rating-4-plus")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all duration-300 hover:scale-105 active:scale-95 flex-shrink-0 ${
+              activeFilters.has("rating-4-plus")
+                ? "bg-[#FFF2EB] dark:bg-orange-950/20 border-[#EB590E] text-[#EB590E] shadow-sm"
+                : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700"
+            }`}
+          >
+            <Star className={`h-3.5 w-3.5 ${activeFilters.has("rating-4-plus") ? "fill-[#EB590E] text-[#EB590E]" : "text-gray-400"}`} />
+            <span>Rating 4.0+</span>
+          </button>
+
+          {/* Pill 3: Rating 3.5+ */}
+          <button
+            onClick={() => handleToggleHorizontalFilter("rating-35-plus")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all duration-300 hover:scale-105 active:scale-95 flex-shrink-0 ${
+              activeFilters.has("rating-35-plus")
+                ? "bg-[#FFF2EB] dark:bg-orange-950/20 border-[#EB590E] text-[#EB590E] shadow-sm"
+                : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700"
+            }`}
+          >
+            <Star className={`h-3.5 w-3.5 ${activeFilters.has("rating-35-plus") ? "fill-[#EB590E] text-[#EB590E]" : "text-gray-400"}`} />
+            <span>Rating 3.5+</span>
+          </button>
+
+          {/* Pill 4: No packaging charges */}
+          <button
+            onClick={() => handleToggleHorizontalFilter("pricing-no-packaging")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all duration-300 hover:scale-105 active:scale-95 flex-shrink-0 ${
+              activeFilters.has("pricing-no-packaging")
+                ? "bg-[#FFF2EB] dark:bg-orange-950/20 border-[#EB590E] text-[#EB590E] shadow-sm"
+                : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700"
+            }`}
+          >
+            <span>No packaging charges</span>
+          </button>
+
+          {/* Pill 5: Same price as restaurant */}
+          <button
+            onClick={() => handleToggleHorizontalFilter("pricing-same-price")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all duration-300 hover:scale-105 active:scale-95 flex-shrink-0 ${
+              activeFilters.has("pricing-same-price")
+                ? "bg-[#FFF2EB] dark:bg-orange-950/20 border-[#EB590E] text-[#EB590E] shadow-sm"
+                : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700"
+            }`}
+          >
+            <span>Same price as restaurant</span>
+          </button>
+
+          {/* Pill 6: Under 200 */}
+          <button
+            onClick={() => handleToggleHorizontalFilter("price-under-200")}
+            className={`flex items-center gap-1 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all duration-300 hover:scale-105 active:scale-95 flex-shrink-0 ${
+              activeFilters.has("price-under-200")
+                ? "bg-[#FFF2EB] dark:bg-orange-950/20 border-[#EB590E] text-[#EB590E] shadow-sm"
+                : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700"
+            }`}
+          >
+            <IndianRupee className="h-3.5 w-3.5" />
+            <span>Under 200</span>
+          </button>
+
+          {/* Pill 7: Nearby (< 2 km) */}
+          <button
+            onClick={() => handleToggleHorizontalFilter("distance-under-2km")}
+            className={`flex items-center gap-1 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all duration-300 hover:scale-105 active:scale-95 flex-shrink-0 ${
+              activeFilters.has("distance-under-2km")
+                ? "bg-[#FFF2EB] dark:bg-orange-950/20 border-[#EB590E] text-[#EB590E] shadow-sm"
+                : "bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700"
+            }`}
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            <span>Nearby (&lt; 2 km)</span>
+          </button>
+        </div>
+
+        {/* Previously Ordered Section */}
+        {!loadingPreviouslyOrdered && previouslyOrderedRestaurants.length > 0 && (
+          <div className="px-4 py-4 sm:py-6">
+            <HorizontalCarousel
+              header={
+                <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                  Previously ordered
+                </h2>
+              }
+              showControls={true}
+            >
+              {previouslyOrderedRestaurants.map((restaurant) => (
+                <Link
+                  key={`prev-ordered-${restaurant.mongoId || restaurant.id}`}
+                  to={`/user/restaurants/${restaurant.slug}`}
+                  className="w-48 sm:w-56 flex-shrink-0 flex flex-col bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 group"
+                >
+                  <div className="relative h-28 sm:h-32 bg-gray-50 overflow-hidden">
+                    <RestaurantImageCarousel
+                      restaurant={restaurant}
+                      backendOrigin={BACKEND_ORIGIN}
+                      className="h-28 sm:h-32"
+                      roundedClass="rounded-t-2xl"
+                    />
+                  </div>
+                  <div className="p-3 flex flex-col flex-grow">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:text-[#FA0272] transition-colors">
+                      {restaurant.name}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold text-white px-1.5 py-0.5 rounded-md ${restaurant.rating > 0 ? "bg-[#259539]" : "bg-gray-400"}`}>
+                        {restaurant.rating > 0 ? restaurant.rating.toFixed(1) : "NEW"}
+                        {restaurant.rating > 0 && <Star className="h-2.5 w-2.5 fill-white text-white" strokeWidth={0} />}
+                      </span>
+                      <span className="text-[10px] text-gray-400">•</span>
+                      <span className="text-[10px] text-gray-500 truncate max-w-[80px]">
+                        {restaurant.cuisine}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-1.5 text-[10px] text-gray-500">
+                      <Clock className="h-3.5 w-3.5 text-gray-400" />
+                      <span>{restaurant.deliveryTime}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </HorizontalCarousel>
+          </div>
+        )}
 
 
         {HeroBannerSection}
@@ -3422,7 +3670,31 @@ export default function Home() {
                           }`}>
                           <span
                             className={`text-sm font-medium ${activeFilters.has("price-under-500") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
-                            Under â‚¹500
+                            Under ₹500
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => toggleFilter("pricing-no-packaging")}
+                          className={`px-4 py-3 rounded-xl border text-left transition-colors ${
+                            activeFilters.has("pricing-no-packaging")
+                              ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
+                              : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
+                          }`}>
+                          <span
+                            className={`text-sm font-medium ${activeFilters.has("pricing-no-packaging") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
+                            No packaging charges
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => toggleFilter("pricing-same-price")}
+                          className={`px-4 py-3 rounded-xl border text-left transition-colors ${
+                            activeFilters.has("pricing-same-price")
+                              ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
+                              : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
+                          }`}>
+                          <span
+                            className={`text-sm font-medium ${activeFilters.has("pricing-same-price") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
+                            Same price as restaurant
                           </span>
                         </button>
                       </div>
