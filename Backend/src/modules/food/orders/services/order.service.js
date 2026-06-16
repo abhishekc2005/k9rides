@@ -187,6 +187,43 @@ export async function createOrder(userId, dto) {
 
     normalizedPricing.total = Math.round(computedTotal * 100) / 100;
 
+    if (isCash) {
+      const { FoodFeeSettings } = await import('../../admin/models/feeSettings.model.js');
+      const feeDoc = await FoodFeeSettings.findOne({ isActive: true }).sort({ createdAt: -1 });
+      const codOrderLimit = feeDoc?.codOrderLimit;
+      
+      if (codOrderLimit !== undefined && codOrderLimit !== null && normalizedPricing.total >= codOrderLimit) {
+        throw new ValidationError(`Cash on Delivery is not allowed for orders of ₹${codOrderLimit} or more.`);
+      }
+
+      // Also check maxAvailableCashLimit of online delivery boy wallets if applicable
+      const { FoodDeliveryPartner } = await import('../../delivery/models/deliveryPartner.model.js');
+      const { getDeliveryPartnerWalletEnhanced } = await import('../../delivery/services/deliveryFinance.service.js');
+      const onlinePartners = await FoodDeliveryPartner.find({ availabilityStatus: 'online' }).lean();
+      
+      let maxAvailableCashLimit = 0;
+      const effectiveCodLimit = codOrderLimit ?? Infinity;
+      
+      if (onlinePartners.length === 0) {
+        maxAvailableCashLimit = effectiveCodLimit;
+      } else {
+        for (const partner of onlinePartners) {
+          try {
+            const wallet = await getDeliveryPartnerWalletEnhanced(partner._id);
+            if (wallet.availableCashLimit > maxAvailableCashLimit) {
+              maxAvailableCashLimit = wallet.availableCashLimit;
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+      }
+      
+      if (normalizedPricing.total > maxAvailableCashLimit) {
+        throw new ValidationError("Cash on Delivery is currently unavailable due to delivery partner wallet limits.");
+      }
+    }
+
     if (paymentMethod === "razorpay" && !isRazorpayConfigured()) {
       throw new ValidationError("Razorpay payment gateway is not configured");
     }

@@ -2050,6 +2050,7 @@ export const deliveryAPI = {
 };
 
 export const userAPI = {
+  getPublicFeeSettings: () => apiClient.get("/food/user/fee-settings", { contextModule: "user" }),
   deleteCurrentUserAccount: () => apiClient.delete('/food/user/profile', { contextModule: 'user' }),
   /** Get current user profile (Bearer USER). */
   getProfile: () =>

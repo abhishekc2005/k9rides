@@ -20,6 +20,7 @@ export default function FeeSettings() {
     },
     platformFee: "",
     gstRate: "",
+    codOrderLimit: "",
   })
   const [distanceRules, setDistanceRules] = useState([])
   const [loadingFeeSettings, setLoadingFeeSettings] = useState(false)
@@ -101,6 +102,7 @@ export default function FeeSettings() {
           },
           platformFee: saved.platformFee ?? "",
           gstRate: saved.gstRate ?? "",
+          codOrderLimit: saved.codOrderLimit ?? "",
         })
       } else {
         setFeeSettings({
@@ -113,6 +115,7 @@ export default function FeeSettings() {
           },
           platformFee: "",
           gstRate: "",
+          codOrderLimit: "",
         })
       }
     } catch {
@@ -309,6 +312,11 @@ export default function FeeSettings() {
         toast.error("GST rate must be between 0 and 100")
         return
       }
+      const codOrderLimit = Number(feeSettings.codOrderLimit)
+      if (feeSettings.codOrderLimit !== "" && (!Number.isFinite(codOrderLimit) || codOrderLimit < 0)) {
+        toast.error("COD Order Limit must be 0 or greater")
+        return
+      }
 
       setSavingFeeSettings(true)
       const response = await adminAPI.createOrUpdateFeeSettings({
@@ -325,6 +333,7 @@ export default function FeeSettings() {
         },
         platformFee,
         gstRate,
+        codOrderLimit: feeSettings.codOrderLimit === "" ? null : codOrderLimit,
         isActive: true,
       })
       if (response?.data?.success) {
@@ -681,6 +690,19 @@ export default function FeeSettings() {
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
                     placeholder="5"
                   />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">COD Order Limit (₹)</label>
+                  <input
+                    type="number"
+                    value={feeSettings.codOrderLimit}
+                    onChange={(e) => setFeeSettings((s) => ({ ...s, codOrderLimit: e.target.value }))}
+                    min="0"
+                    step="1"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                    placeholder="e.g. 299"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">COD will be hidden for cart totals above this amount.</p>
                 </div>
               </div>
             </>

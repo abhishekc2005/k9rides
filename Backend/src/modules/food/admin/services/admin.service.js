@@ -1753,6 +1753,9 @@ export async function upsertFeeSettings(body) {
         if (body.gstRate === null) $unset.gstRate = 1;
         else if (body.gstRate !== undefined) $set.gstRate = body.gstRate;
 
+        if (body.codOrderLimit === null) $unset.codOrderLimit = 1;
+        else if (body.codOrderLimit !== undefined) $set.codOrderLimit = body.codOrderLimit;
+
         if (body.isActive !== undefined) $set.isActive = body.isActive;
 
         const update = {};
@@ -1780,6 +1783,7 @@ export async function upsertFeeSettings(body) {
     if (body.freeDeliveryThreshold !== undefined && body.freeDeliveryThreshold !== null) payload.freeDeliveryThreshold = body.freeDeliveryThreshold;
     if (body.platformFee !== undefined && body.platformFee !== null) payload.platformFee = body.platformFee;
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
+    if (body.codOrderLimit !== undefined && body.codOrderLimit !== null) payload.codOrderLimit = body.codOrderLimit;
 
     const created = await FoodFeeSettings.create(payload);
     return created.toObject();
@@ -1956,10 +1960,15 @@ export async function getContactMessages(query = {}) {
 // ----- Delivery Cash Limit (admin) -----
 export async function getDeliveryCashLimitSettings() {
     const doc = await FoodDeliveryCashLimit.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
-    const settings = doc || { deliveryCashLimit: 0, deliveryWithdrawalLimit: 100, isActive: true };
+    
+    // FoodFeeSettings is already imported at the top of this file
+    const feeDoc = await FoodFeeSettings.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
+    
+    const deliveryCashLimit = Number(feeDoc?.codOrderLimit) || Number(doc?.deliveryCashLimit) || 0;
+    
     return {
-        deliveryCashLimit: Number(settings.deliveryCashLimit) || 0,
-        deliveryWithdrawalLimit: Number(settings.deliveryWithdrawalLimit) || 100
+        deliveryCashLimit: deliveryCashLimit,
+        deliveryWithdrawalLimit: Number(doc?.deliveryWithdrawalLimit) || 100
     };
 }
 

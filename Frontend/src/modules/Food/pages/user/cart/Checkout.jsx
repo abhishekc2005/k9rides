@@ -13,6 +13,7 @@ import { Badge } from "@food/components/ui/badge"
 import { useCart } from "@food/context/CartContext"
 import { useProfile } from "@food/context/ProfileContext"
 import { useOrders } from "@food/context/OrdersContext"
+import { userAPI } from "@food/api"
 
 export default function Checkout() {
   const navigate = useNavigate()
@@ -40,6 +41,47 @@ export default function Checkout() {
   const deliveryFee = 2.99 * 83
   const tax = subtotal * 0.08
   const total = subtotal + deliveryFee + tax
+
+  const [feeSettings, setFeeSettings] = useState(null)
+  const [maxAvailableCashLimit, setMaxAvailableCashLimit] = useState(Infinity)
+  useEffect(() => {
+    userAPI.getPublicFeeSettings()
+      .then(res => {
+        const data = res?.data?.data || {}
+        setFeeSettings(data)
+        if (data.maxAvailableCashLimit !== undefined) {
+          setMaxAvailableCashLimit(data.maxAvailableCashLimit)
+        } else if (data.codOrderLimit !== undefined && data.codOrderLimit !== null) {
+          setMaxAvailableCashLimit(data.codOrderLimit)
+        }
+      })
+      .catch(console.error)
+  }, [])
+
+  const availablePaymentMethods = paymentMethods.filter(pm => {
+    if (pm.type === "cash" || pm.type === "cod") {
+      if (feeSettings?.codOrderLimit !== undefined && feeSettings?.codOrderLimit !== null && total >= feeSettings.codOrderLimit) {
+        return false
+      }
+      if (total > maxAvailableCashLimit) {
+        return false
+      }
+    }
+    return true
+  })
+
+  // If the currently selected payment method is no longer available, select a valid fallback
+  useEffect(() => {
+    if (availablePaymentMethods.length > 0) {
+      const isSelectedStillAvailable = availablePaymentMethods.some(pm => pm.id === selectedPayment)
+      if (!isSelectedStillAvailable) {
+        const fallbackPm = availablePaymentMethods.find(pm => pm.isDefault) || availablePaymentMethods[0]
+        setSelectedPayment(fallbackPm?.id || "")
+      }
+    } else {
+      setSelectedPayment("")
+    }
+  }, [availablePaymentMethods, selectedPayment])
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress || !selectedPayment) {
@@ -192,9 +234,9 @@ export default function Checkout() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {paymentMethods.length > 0 ? (
+                  {availablePaymentMethods.length > 0 ? (
                     <div className="space-y-3">
-                      {paymentMethods.map((payment) => {
+                      {availablePaymentMethods.map((payment) => {
                         const isSelected = selectedPayment === payment.id
                         const cardNumber = `**** **** **** ${payment.cardNumber}`
 
@@ -237,7 +279,7 @@ export default function Checkout() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-muted-foreground mb-4">No payment methods saved</p>
+                      <p className="text-muted-foreground mb-4">No available payment methods</p>
                       <Link to="/user/profile/payments/new">
                         <Button>Add Payment Method</Button>
                       </Link>

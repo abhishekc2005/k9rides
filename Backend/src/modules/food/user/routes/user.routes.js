@@ -30,8 +30,11 @@ import {
     createSupportTicketController,
     listMySupportTicketsController
 } from '../controllers/supportTicket.controller.js';
+import { getPublicFeeSettingsController } from '../controllers/userSettings.controller.js';
 
 const router = express.Router();
+
+router.get('/fee-settings', getPublicFeeSettingsController);
 
 router.get('/profile', getCurrentUserProfileController);
 router.patch('/profile', updateCurrentUserProfileController);

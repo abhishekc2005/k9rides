@@ -28,6 +28,7 @@ const feeSettingsUpsertSchema = z.object({
     freeDeliveryThreshold: z.number().min(0).nullable().optional(),
     platformFee: z.number().min(0).nullable().optional(),
     gstRate: z.number().min(0).max(100).nullable().optional(),
+    codOrderLimit: z.number().min(0).nullable().optional(),
     isActive: z.boolean().optional()
 });
 
@@ -83,6 +84,8 @@ export const validateFeeSettingsUpsertDto = (body) => {
             body?.platformFee === null ? null : body?.platformFee !== undefined ? Number(body.platformFee) : undefined,
         gstRate:
             body?.gstRate === null ? null : body?.gstRate !== undefined ? Number(body.gstRate) : undefined,
+        codOrderLimit:
+            body?.codOrderLimit === null ? null : body?.codOrderLimit !== undefined ? Number(body.codOrderLimit) : undefined,
         isActive: body?.isActive !== undefined ? Boolean(body.isActive) : undefined
     };
 

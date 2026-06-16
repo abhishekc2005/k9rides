@@ -126,6 +126,8 @@ export default function Cart() {
   const [showPaymentSheet, setShowPaymentSheet] = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
   const [isLoadingWallet, setIsLoadingWallet] = useState(false)
+  const [feeSettings, setFeeSettings] = useState(null)
+  const [maxAvailableCashLimit, setMaxAvailableCashLimit] = useState(Infinity)
   const [note, setNote] = useState(() => {
     try {
       if (typeof window === "undefined") return ""
@@ -918,6 +920,21 @@ export default function Cart() {
     fetchWalletBalance()
   }, [])
 
+  // Fetch fee settings
+  useEffect(() => {
+    userAPI.getPublicFeeSettings()
+      .then(res => {
+        const data = res?.data?.data || {}
+        setFeeSettings(data)
+        if (data.maxAvailableCashLimit !== undefined) {
+          setMaxAvailableCashLimit(data.maxAvailableCashLimit)
+        } else if (data.codOrderLimit !== undefined && data.codOrderLimit !== null) {
+          setMaxAvailableCashLimit(data.codOrderLimit)
+        }
+      })
+      .catch(console.error)
+  }, [])
+
   // Fetch user order count (used for first-time coupon eligibility)
   useEffect(() => {
     const fetchOrderCount = async () => {
@@ -947,6 +964,23 @@ export default function Cart() {
   const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges + surgeAmount
   const total = pricing?.total ?? (subtotal + deliveryFee + platformFee + gstCharges + surgeAmount - (pricing?.discount ?? discount))
   const savings = pricing?.savings ?? Math.max(0, totalBeforeDiscount - total)
+
+  const showCodOption = useMemo(() => {
+    if (feeSettings?.codOrderLimit !== undefined && feeSettings?.codOrderLimit !== null && total >= feeSettings.codOrderLimit) {
+      return false
+    }
+    if (total > maxAvailableCashLimit) {
+      return false
+    }
+    return true
+  }, [feeSettings, maxAvailableCashLimit, total])
+
+  // Automatically switch payment method to razorpay if cash/COD is disabled and currently selected
+  useEffect(() => {
+    if (!showCodOption && selectedPaymentMethod === "cash") {
+      setSelectedPaymentMethod("razorpay")
+    }
+  }, [showCodOption, selectedPaymentMethod])
   const selectedPaymentLabel =
     selectedPaymentMethod === "wallet"
       ? "Wallet"
@@ -2855,9 +2889,10 @@ export default function Cart() {
                           description: 'Pay when order arrives',
                           icon: <Banknote className="w-5 h-5" />,
                           color: 'bg-primary-orange/5 text-accent-orange dark:bg-accent-orange/50/40 dark:text-primary-orange/80',
-                          selectedColor: 'bg-primary-orange/50 text-white'
+                          selectedColor: 'bg-primary-orange/50 text-white',
+                          hidden: !showCodOption
                         }
-                      ].map((option) => (
+                      ].filter(opt => !opt.hidden).map((option) => (
                         <button
                           key={option.id}
                           onClick={() => {
