@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useState, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom"
-import { Phone, Lock, ArrowRight, ShieldCheck, Loader2, UtensilsCrossed, Car, ShoppingBag, Building2 } from "lucide-react"
+import { Phone, Lock, ArrowRight, ArrowLeft, ShieldCheck, Loader2, UtensilsCrossed, Car, ShoppingBag, Building2 } from "lucide-react"
 import { toast } from "sonner"
 import apiClient, { authAPI } from "@food/api"
 import { setUnifiedAuthData, isUnifiedAuthenticated } from "@food/utils/auth"
@@ -489,6 +489,13 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
 
       {/* Main Content Area */}
       <div className="flex-1 w-full flex flex-col lg:flex-row relative z-20 bg-[#F8F9FA] overflow-hidden h-[100dvh] lg:h-auto font-sans">
+        
+        {/* Back Button */}
+        <div className="absolute top-6 left-6 z-50">
+          <Link to="/food/user" className="w-10 h-10 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-full shadow-sm border border-gray-200 text-[#1A1A1A] hover:bg-white active:scale-95 transition-all">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+        </div>
         
         {/* Abstract Background Elements (Mobile Only) */}
         <div className="lg:hidden absolute top-0 left-0 w-56 h-56 pointer-events-none z-0 opacity-70">

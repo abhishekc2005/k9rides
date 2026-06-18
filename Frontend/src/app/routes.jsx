@@ -103,7 +103,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Root → Master Landing Page */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to="/food/user" replace />} />
 
       {/* Landing Page Module */}
       <Route path="/landing-page" element={<Suspense fallback={<PageLoader />}><LandingPage /></Suspense>} />
