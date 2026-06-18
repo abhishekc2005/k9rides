@@ -126,61 +126,46 @@ export default function HomeHeader({
   const slideBanners = [
     {
       id: 0,
-      bg: "bg-[#FA0272]",
+      bg: "bg-[#711313]",
       content: (
-        <div className="flex justify-between items-end h-full px-2 pb-2">
-          <div className="flex flex-col items-start w-[65%] pb-2">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-[26px] leading-[1] font-black text-white tracking-tight">Get</span>
-              <div className="bg-white text-[#FA0272] px-2 py-0.5 rounded-r-lg font-bold text-[15px] relative ml-2 shadow-sm border-l-2 border-dashed border-[#FA0272]">
-                <div className="absolute -left-[9px] top-1/2 -translate-y-1/2 w-0 h-0 border-y-[12px] border-y-transparent border-r-[8px] border-r-white"></div>
-                50% OFF
-              </div>
-            </div>
-            <div className="text-[26px] leading-[1.1] font-black text-white tracking-tight mb-2">& FREE delivery</div>
-            <div className="text-[12px] font-bold text-pink-100 mb-3 opacity-90 leading-tight">on your first order under 7 km</div>
-            <button className="bg-white text-[#FA0272] text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-lg transform active:scale-95 transition-transform pointer-events-auto">
-              Know more <ChevronRight className="w-3.5 h-3.5"/>
-            </button>
+        <div className="flex justify-between items-center h-full px-4">
+          <div className="flex flex-col items-center justify-center w-[60%]">
+             <div className="text-[16px] font-bold text-white/80 tracking-widest uppercase mb-1">FLAT</div>
+             <div className="text-[34px] leading-[1] font-black text-white tracking-tight mb-1 drop-shadow-md">50% OFF</div>
+             <div className="text-[14px] font-medium text-white/90">with FREE delivery</div>
           </div>
-          <div className="w-[35%] flex justify-end pb-0 pr-1">
-            <img src={foodIcon} alt="offer" className="w-[100px] h-[100px] object-contain drop-shadow-2xl translate-x-2" />
+          <div className="w-[40%] flex justify-end">
+            <img src={foodIcon} alt="offer" className="w-[100px] h-[100px] object-contain drop-shadow-2xl scale-110" />
           </div>
         </div>
       )
     },
     {
       id: 1,
-      bg: "bg-gradient-to-br from-[#e0e8ff] to-[#bac9fd] dark:from-[#0f172a] dark:to-[#1e3a8a]",
+      bg: "bg-[#711313]",
       content: (
-        <div className="flex justify-between items-end h-full px-2 pb-3">
-          <div className="flex flex-col items-start w-[65%] pb-2">
-            <div className="text-[28px] leading-[1.1] font-black text-[#1e3a8a] dark:text-[#93c5fd] tracking-tight mb-1">Flat ₹150 OFF</div>
-            <div className="text-[12px] font-bold text-gray-800 dark:text-gray-300 mb-3 opacity-90">on Premium Dining restaurants</div>
-            <button className="bg-[#1e3a8a] text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-lg transform active:scale-95 transition-transform pointer-events-auto">
-              Explore now <ChevronRight className="w-3.5 h-3.5"/>
-            </button>
+        <div className="flex justify-between items-center h-full px-4">
+          <div className="flex flex-col items-start w-[65%]">
+            <div className="text-[28px] leading-[1.1] font-black text-white tracking-tight mb-1">Flat ₹150 OFF</div>
+            <div className="text-[12px] font-bold text-gray-200 mb-3 opacity-90">on Premium Dining restaurants</div>
           </div>
-          <div className="w-[35%] flex justify-end pb-3 pr-2">
-            <Sparkles className="w-[85px] h-[85px] text-blue-600/30 dark:text-blue-400/30 fill-blue-600/20 dark:fill-blue-400/20 drop-shadow-2xl" strokeWidth={1} />
+          <div className="w-[35%] flex justify-end">
+            <Sparkles className="w-[75px] h-[75px] text-white/30 fill-white/20 drop-shadow-2xl" strokeWidth={1} />
           </div>
         </div>
       )
     },
     {
       id: 2,
-      bg: "bg-gradient-to-br from-[#e9fcef] to-[#b3facf] dark:from-[#064e3b] dark:to-[#047857]",
+      bg: "bg-[#711313]",
       content: (
-        <div className="flex justify-between items-end h-full px-3 pb-3">
-          <div className="flex flex-col items-start w-[65%] pb-2">
-            <div className="text-[28px] leading-[1.1] font-black text-[#065f46] dark:text-[#a7f3d0] tracking-tight mb-1">Free Delivery</div>
-            <div className="text-[12px] font-bold text-gray-800 dark:text-gray-200 mb-3 opacity-90">on all fast food orders above ₹199</div>
-            <button className="bg-[#065f46] text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-lg transform active:scale-95 transition-transform pointer-events-auto">
-              Order now <ChevronRight className="w-3.5 h-3.5"/>
-            </button>
+        <div className="flex justify-between items-center h-full px-4">
+          <div className="flex flex-col items-start w-[65%]">
+            <div className="text-[28px] leading-[1.1] font-black text-white tracking-tight mb-1">Free Delivery</div>
+            <div className="text-[12px] font-bold text-gray-200 mb-3 opacity-90">on all fast food orders above ₹199</div>
           </div>
-          <div className="w-[35%] flex justify-end pb-3 pr-1">
-            <Gift className="w-[85px] h-[85px] text-green-700/30 dark:text-green-400/30 fill-green-700/20 dark:fill-green-400/20 drop-shadow-2xl" strokeWidth={1} />
+          <div className="w-[35%] flex justify-end">
+            <Gift className="w-[75px] h-[75px] text-white/30 fill-white/20 drop-shadow-2xl" strokeWidth={1} />
           </div>
         </div>
       )
@@ -189,7 +174,7 @@ export default function HomeHeader({
 
   return (
     <>
-      <div className="relative h-[340px] w-full overflow-hidden rounded-b-[2rem] shadow-[0_10px_40px_rgba(250,2,114,0.15)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+      <div className="relative h-[340px] w-full overflow-hidden rounded-b-[2rem] shadow-[0_10px_40px_rgba(113,19,19,0.3)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
         
         {/* Sliding Background Track */}
         <div 
@@ -221,14 +206,14 @@ export default function HomeHeader({
             onClick={handleLocationClick}
           >
             <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-md border border-white/20 hover:bg-white/30 transition-colors shadow-sm dark:bg-black/20 dark:border-white/10 dark:hover:bg-white/10 flex-shrink-0">
-              <MapPin className="h-4 w-4 text-gray-900 dark:text-white" />
+              <MapPin className="h-4 w-4 text-white" />
             </div>
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                <span className="text-[10px] font-bold text-gray-900/80 dark:text-white/80 uppercase tracking-wider">Deliver to</span>
-                <ChevronDown className="h-2.5 w-2.5 text-gray-900/80 dark:text-white/80" />
+                <span className="text-[10px] font-bold text-white/90 uppercase tracking-wider drop-shadow-sm">Deliver to</span>
+                <ChevronDown className="h-2.5 w-2.5 text-white/90 drop-shadow-sm" />
               </div>
-              <span className="text-sm font-bold text-gray-900 dark:text-white truncate drop-shadow-sm max-w-full">
+              <span className="text-sm font-bold text-white truncate drop-shadow-md max-w-full">
                 {savedAddressText || (location?.area && location?.city 
                   ? `${location.area}, ${location.city}` 
                   : location?.area || location?.city || "Select Location")}
@@ -240,9 +225,9 @@ export default function HomeHeader({
             <Popover>
               <PopoverTrigger asChild>
                 <div className="h-10 w-10 relative flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-sm cursor-pointer active:scale-95 transition-all hover:bg-white/30 dark:bg-black/20 dark:border-white/10 dark:hover:bg-white/10 flex-shrink-0">
-                  <Bell className="h-[22px] w-[22px] text-gray-900 dark:text-white" />
+                  <Bell className="h-[22px] w-[22px] text-white drop-shadow-sm" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-yellow-400 rounded-full border-2 border-white animate-pulse dark:border-gray-900" />
+                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-yellow-400 rounded-full border-2 border-white animate-pulse" />
                   )}
                 </div>
               </PopoverTrigger>
@@ -323,7 +308,7 @@ export default function HomeHeader({
               <div className={`flex items-center justify-center p-[2px] rounded-sm border ${isVegMode ? 'border-green-600' : 'border-gray-500'} bg-white flex-shrink-0`}>
                 <div className={`w-[6px] h-[6px] rounded-full ${isVegMode ? 'bg-green-600' : 'bg-gray-500'}`} />
               </div>
-              <span className={`text-[9px] font-black uppercase tracking-tight ${isVegMode ? 'text-green-800 dark:text-green-400' : 'text-gray-800 dark:text-gray-200'} hidden xs:inline`}>
+              <span className={`text-[9px] font-black uppercase tracking-tight text-white drop-shadow-sm hidden xs:inline`}>
                 Veg
               </span>
               <div className={`w-6 h-3.5 rounded-full relative transition-colors ml-0.5 flex-shrink-0 ${isVegMode ? 'bg-green-500' : 'bg-gray-400/80 dark:bg-gray-600'}`}>
@@ -336,22 +321,26 @@ export default function HomeHeader({
         {/* Mobile Option Buttons (Food & Taxi) */}
         <div className="absolute top-[68px] inset-x-0 z-20 px-4 md:hidden flex gap-3 pointer-events-auto">
           {/* Food Button */}
-          <Link
-            to="/food/user"
-            className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-gradient-to-r from-[#FA0272] to-[#ff4b8e] text-white font-bold text-sm shadow-[0_4px_14px_rgba(250,2,114,0.3)] transition-transform active:scale-95 border border-[#FA0272]/20"
-          >
-            <Utensils className="h-4.5 w-4.5" />
-            <span>Food</span>
-          </Link>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+            <Link
+              to="/food/user"
+              className={`flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md text-white font-bold text-[14px] shadow-sm border border-white/20 transition-colors ${window.location.pathname.includes('/food') ? 'bg-black/40' : 'bg-black/10'}`}
+            >
+              <img src={foodIcon} alt="Food" className="w-6 h-6 object-contain drop-shadow-sm" />
+              <span className="tracking-wide">Food</span>
+            </Link>
+          </motion.div>
 
           {/* Taxi Button */}
-          <Link
-            to="/taxi/user"
-            className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-black/35 backdrop-blur-md text-white font-bold text-sm shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-white/10 transition-transform active:scale-95 hover:bg-black/45"
-          >
-            <Car className="h-4.5 w-4.5 text-white" />
-            <span>Taxi</span>
-          </Link>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+            <Link
+              to="/taxi/user"
+              className={`flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md text-white font-bold text-[14px] shadow-sm border border-white/20 transition-colors ${window.location.pathname.includes('/taxi') ? 'bg-black/40' : 'bg-black/10'}`}
+            >
+              <img src={taxiIcon} alt="Taxi" className="w-6 h-6 object-contain drop-shadow-sm" />
+              <span className="tracking-wide">Taxi</span>
+            </Link>
+          </motion.div>
         </div>
         
         {/* Carousel Pager Dots */}

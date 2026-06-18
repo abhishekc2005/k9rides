@@ -3,6 +3,8 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Search, Wallet, Utensils, Car } from 'lucide-react';
 import { DEFAULT_LOCATION_LABEL, getSavedLocationLabel, LOCATION_UPDATED_EVENT } from '../services/locationStore';
+import foodIcon from '../../../../Food/assets/category-icons/food.png';
+import taxiIcon from '../../../../Food/assets/category-icons/taxi.png';
 
 const fallingCoins = [
   { id: 1, left: '24%', delay: 0 },
@@ -130,24 +132,28 @@ const HeaderGreeting = () => {
       </div>
 
       {/* Mobile Option Buttons (Food & Taxi) */}
-      <div className="mt-4 md:hidden flex gap-3">
-        {/* Food Button (Inactive) */}
-        <Link
-          to="/food/user"
-          className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-white border border-slate-200 text-slate-800 dark:bg-black/35 dark:border-white/10 dark:text-white font-bold text-sm shadow-sm transition-transform active:scale-95 hover:bg-slate-50"
-        >
-          <Utensils className="h-4.5 w-4.5 text-slate-700 dark:text-gray-300" />
-          <span>Food</span>
-        </Link>
+      <div className="mt-4 md:hidden flex gap-3 pointer-events-auto">
+        {/* Food Button */}
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+          <Link
+            to="/food/user"
+            className={`flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md font-bold text-[14px] shadow-sm transition-colors ${window.location.pathname.includes('/food') ? 'bg-slate-900 text-white border border-slate-900' : 'bg-white border border-slate-200 text-slate-800'}`}
+          >
+            <img src={foodIcon} alt="Food" className="w-6 h-6 object-contain drop-shadow-sm" />
+            <span className="tracking-wide">Food</span>
+          </Link>
+        </motion.div>
 
-        {/* Taxi Button (Active) */}
-        <Link
-          to="/taxi/user"
-          className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-slate-900 text-white font-bold text-sm shadow-md transition-transform active:scale-95 border border-slate-900"
-        >
-          <Car className="h-4.5 w-4.5 text-white" />
-          <span>Taxi</span>
-        </Link>
+        {/* Taxi Button */}
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+          <Link
+            to="/taxi/user"
+            className={`flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md font-bold text-[14px] shadow-sm transition-colors ${window.location.pathname.includes('/taxi') ? 'bg-slate-900 text-white border border-slate-900' : 'bg-white border border-slate-200 text-slate-800'}`}
+          >
+            <img src={taxiIcon} alt="Taxi" className="w-6 h-6 object-contain drop-shadow-sm" />
+            <span className="tracking-wide">Taxi</span>
+          </Link>
+        </motion.div>
       </div>
 
       <motion.div
