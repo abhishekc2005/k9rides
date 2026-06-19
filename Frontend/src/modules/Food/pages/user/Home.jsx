@@ -1746,13 +1746,10 @@ export default function Home() {
           params.trusted = "true";
         }
 
-        // Strict zone-only listing for user home.
-        // If zone is not detected yet, don't fetch global restaurants.
-        if (!zoneId) {
-          setRestaurantsData([]);
-          return;
+        // Allow fetching global restaurants when zone is not detected yet.
+        if (zoneId) {
+          params.zoneId = zoneId;
         }
-        params.zoneId = zoneId;
 
         debugLog("Fetching restaurants with params:", params);
         const response = await restaurantAPI.getRestaurants(params);
