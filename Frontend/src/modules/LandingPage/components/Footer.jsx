@@ -1,5 +1,6 @@
 import React from 'react'
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react'
+import { Mail, Phone, MapPin } from 'lucide-react'
+import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin } from 'react-icons/fa'
 import k9Logo from '../assets/k9-logo.jpg'
 
 export default function Footer({ settings }) {
@@ -27,10 +28,10 @@ export default function Footer({ settings }) {
   }
 
   const socialLinks = [
-    { icon: Facebook, href: settings?.social_links?.facebook || '#' },
-    { icon: Twitter, href: settings?.social_links?.twitter || '#' },
-    { icon: Instagram, href: settings?.social_links?.instagram || '#' },
-    { icon: Linkedin, href: settings?.social_links?.linkedin || '#' }
+    { icon: FaFacebook, href: settings?.social_links?.facebook || '#', colorClass: 'text-[#1877F2]' },
+    { icon: FaTwitter, href: settings?.social_links?.twitter || '#', colorClass: 'text-[#1DA1F2]' },
+    { icon: FaInstagram, href: settings?.social_links?.instagram || '#', colorClass: 'text-[#E4405F]' },
+    { icon: FaLinkedin, href: settings?.social_links?.linkedin || '#', colorClass: 'text-[#0A66C2]' }
   ]
 
   const playStoreUrl = settings?.play_store_url || '/login/services'
@@ -64,10 +65,10 @@ export default function Footer({ settings }) {
                 <a
                   key={idx}
                   href={social.href}
-                  className="p-2 rounded-xl bg-slate-900 hover:bg-[#C5902A] hover:text-black transition-all duration-300 border border-slate-800"
+                  className="group p-2 rounded-xl bg-slate-900 hover:bg-[#C5902A] transition-all duration-300 border border-slate-800"
                   aria-label="Social Link"
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className={`w-5 h-5 ${social.colorClass} group-hover:text-black transition-colors duration-300`} />
                 </a>
               )
             })}
