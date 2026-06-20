@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, ChevronDown, Search, Mic, Bell, CheckCircle2, Tag, Gift, AlertCircle, Clock, BellOff, X, ChevronRight, ShoppingBag, Sparkles, Utensils, Car } from 'lucide-react';
 import { 
@@ -38,6 +38,7 @@ export default function HomeHeader({
   vegModeToggleRef,
   isCategoryStuck = false,
 }) {
+  const navigate = useNavigate();
 
   const [notifications, setNotifications] = useState(() => {
     const saved = localStorage.getItem('food_user_notifications');
@@ -322,24 +323,24 @@ export default function HomeHeader({
         <div className="absolute top-[68px] inset-x-0 z-20 px-4 md:hidden flex gap-3 pointer-events-auto">
           {/* Food Button */}
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
-            <Link
-              to="/food/user"
-              className={`flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md text-white font-bold text-[14px] shadow-sm border border-white/20 transition-colors ${window.location.pathname.includes('/food') ? 'bg-black/40' : 'bg-black/10'}`}
+            <button
+              onClick={() => navigate('/food/user')}
+              className={`w-full flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md text-white font-bold text-[14px] shadow-sm border border-white/20 transition-colors cursor-pointer ${window.location.pathname.includes('/food') ? 'bg-black/40' : 'bg-black/10'}`}
             >
               <img src={foodIcon} alt="Food" className="w-6 h-6 object-contain drop-shadow-sm" />
               <span className="tracking-wide">Food</span>
-            </Link>
+            </button>
           </motion.div>
 
           {/* Taxi Button */}
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
-            <Link
-              to="/taxi/user"
-              className={`flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md text-white font-bold text-[14px] shadow-sm border border-white/20 transition-colors ${window.location.pathname.includes('/taxi') ? 'bg-black/40' : 'bg-black/10'}`}
+            <button
+              onClick={() => navigate('/taxi/user')}
+              className={`w-full flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md text-white font-bold text-[14px] shadow-sm border border-white/20 transition-colors cursor-pointer ${window.location.pathname.includes('/taxi') ? 'bg-black/40' : 'bg-black/10'}`}
             >
               <img src={taxiIcon} alt="Taxi" className="w-6 h-6 object-contain drop-shadow-sm" />
               <span className="tracking-wide">Taxi</span>
-            </Link>
+            </button>
           </motion.div>
         </div>
         

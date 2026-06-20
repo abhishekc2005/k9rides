@@ -135,24 +135,24 @@ const HeaderGreeting = () => {
       <div className="mt-4 md:hidden flex gap-3 pointer-events-auto">
         {/* Food Button */}
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
-          <Link
-            to="/food/user"
-            className={`flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md font-bold text-[14px] shadow-sm transition-colors ${window.location.pathname.includes('/food') ? 'bg-slate-900 text-white border border-slate-900' : 'bg-white border border-slate-200 text-slate-800'}`}
+          <button
+            onClick={() => navigate('/food/user')}
+            className={`w-full flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md font-bold text-[14px] shadow-sm transition-colors cursor-pointer ${window.location.pathname.includes('/food') ? 'bg-slate-900 text-white border border-slate-900' : 'bg-white border border-slate-200 text-slate-800'}`}
           >
             <img src={foodIcon} alt="Food" className="w-6 h-6 object-contain drop-shadow-sm" />
             <span className="tracking-wide">Food</span>
-          </Link>
+          </button>
         </motion.div>
 
         {/* Taxi Button */}
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
-          <Link
-            to="/taxi/user"
-            className={`flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md font-bold text-[14px] shadow-sm transition-colors ${window.location.pathname.includes('/taxi') ? 'bg-slate-900 text-white border border-slate-900' : 'bg-white border border-slate-200 text-slate-800'}`}
+          <button
+            onClick={() => navigate('/taxi/user')}
+            className={`w-full flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md font-bold text-[14px] shadow-sm transition-colors cursor-pointer ${window.location.pathname.includes('/taxi') ? 'bg-slate-900 text-white border border-slate-900' : 'bg-white border border-slate-200 text-slate-800'}`}
           >
             <img src={taxiIcon} alt="Taxi" className="w-6 h-6 object-contain drop-shadow-sm" />
             <span className="tracking-wide">Taxi</span>
-          </Link>
+          </button>
         </motion.div>
       </div>
 
