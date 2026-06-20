@@ -46,7 +46,7 @@ const getServiceAccountFromEnv = () => {
 export const initializeFirebaseRealtime = () => {
     try {
         if (admin.apps.length > 0) {
-            db = admin.database();
+            db = databaseURL ? admin.database() : null;
             messaging = admin.messaging();
             return { db, messaging };
         }
@@ -64,8 +64,21 @@ export const initializeFirebaseRealtime = () => {
             databaseURL: databaseURL || undefined
         });
 
-        db = admin.database();
-        messaging = admin.messaging();
+        if (databaseURL) {
+            try {
+                db = admin.database();
+            } catch (dbError) {
+                logger.error(`❌ Firebase Database initialization failed: ${dbError.message}`);
+            }
+        } else {
+            logger.warn('⚠️ Firebase Database URL not configured. Realtime Database features will be unavailable.');
+        }
+
+        try {
+            messaging = admin.messaging();
+        } catch (msgError) {
+            logger.error(`❌ Firebase Messaging initialization failed: ${msgError.message}`);
+        }
 
         logger.info('✅ Firebase Realtime Database Initialized Successfully');
         return { db, messaging };
@@ -77,24 +90,24 @@ export const initializeFirebaseRealtime = () => {
 
 /**
  * Returns the initialized Firebase Realtime Database instance.
- * @returns {admin.database.Database}
- * @throws Error if not initialized
+ * @returns {admin.database.Database|null}
  */
 export const getFirebaseDB = () => {
     if (!db) {
-        throw new Error('⚠️ Firebase Realtime Database not initialized. Call initializeFirebaseRealtime() first.');
+        logger.warn('⚠️ Firebase Realtime Database not initialized.');
+        return null;
     }
     return db;
 };
 
 /**
  * Returns the initialized Firebase Messaging instance.
- * @returns {admin.messaging.Messaging}
- * @throws Error if not initialized
+ * @returns {admin.messaging.Messaging|null}
  */
 export const getFirebaseMessaging = () => {
     if (!messaging) {
-        throw new Error('⚠️ Firebase Messaging not initialized. Call initializeFirebaseRealtime() first.');
+        logger.warn('⚠️ Firebase Messaging not initialized.');
+        return null;
     }
     return messaging;
 };

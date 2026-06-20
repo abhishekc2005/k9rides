@@ -1,3 +1,4 @@
+import { config, isOriginAllowed } from './config/env.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -10,7 +11,6 @@ import { apiRateLimiter } from './middleware/rateLimit.js';
 import { responseTimeLogger } from './middleware/responseTimeLogger.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthCheck } from './config/health.js';
-import { config, isOriginAllowed } from './config/env.js';
 
 
 const app = express();

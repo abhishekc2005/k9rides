@@ -27,7 +27,11 @@ export const connectDB = async () => {
         logger.info(`MongoDB connected: ${conn.connection.host}`);
     } catch (error) {
         logger.error(`MongoDB connection error: ${error.message}`);
-        process.exit(1);
+        if (config.nodeEnv === 'production') {
+            logger.warn('⚠️ Server is running in production mode. Keeping the process alive to allow Mongoose automatic reconnection.');
+        } else {
+            process.exit(1);
+        }
     }
 };
 

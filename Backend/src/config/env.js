@@ -1,6 +1,13 @@
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
+
+const generateRandomSecret = (name) => {
+    const fallback = crypto.randomBytes(32).toString('hex');
+    console.warn(`[env] ⚠️ ${name} environment variable is not set. Generated a random secure fallback secret.`);
+    return fallback;
+};
 
 const parseOrigins = (value) =>
     String(value || '')
@@ -28,8 +35,8 @@ export const config = {
     mongodbConnectTimeoutMs: Number(process.env.MONGODB_CONNECT_TIMEOUT_MS || 30000),
 
     // JWT
-    jwtAccessSecret: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET,
-    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+    jwtAccessSecret: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || generateRandomSecret('JWT_ACCESS_SECRET'),
+    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || generateRandomSecret('JWT_REFRESH_SECRET'),
     jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES || '15m',
     jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES || '7d',
 

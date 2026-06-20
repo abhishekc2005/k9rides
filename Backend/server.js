@@ -1,6 +1,8 @@
+import './src/config/env.js';
 import http from 'http';
 import crypto from 'crypto';
 import { exec } from 'child_process';
+import mongoose from 'mongoose';
 
 import app from './src/app.js';
 import { config } from './src/config/env.js';
@@ -51,8 +53,10 @@ const startServer = async () => {
         validateConfig();
         initializeFirebaseRealtime();
 
-        // 1. Connect to Database (MongoDB)
-        await connectDB();
+        // 1. Connect to Database (MongoDB) - Asynchronously to prevent blocking startup
+        connectDB().catch((err) => {
+            logger.error(`Failed to connect to MongoDB: ${err.message}`);
+        });
 
         // 2. Create HTTP server from Express app
         const httpServer = http.createServer(app);
@@ -88,6 +92,11 @@ const startServer = async () => {
             const signature = req.headers['x-hub-signature-256'];
             const secret = process.env.DEPLOY_WEBHOOK_SECRET;
 
+            if (!secret) {
+                logger.error('DEPLOY_WEBHOOK_SECRET is not configured. Webhook deployment request rejected.');
+                return res.status(500).send('Deploy webhook secret is not configured.');
+            }
+
             const hash = 'sha256=' + crypto
                 .createHmac('sha256', secret)
                 .update(JSON.stringify(req.body))
@@ -108,11 +117,16 @@ const startServer = async () => {
             });
         });
 
-        // 6. Start the HTTP server
-
-        server = httpServer.listen(config.port, config.host, () => {
-            logger.info(`Server running in ${config.nodeEnv} mode on ${config.host}:${config.port}`);
-            console.log(`🌐 [URL] http://localhost:${config.port}`);
+        // 6. Start the HTTP server - Bind immediately to PORT
+        const PORT = process.env.PORT || 5000;
+        server = httpServer.listen(PORT, '0.0.0.0', () => {
+            logger.info('=== STARTUP DIAGNOSTICS ===');
+            logger.info(`Node Environment: ${config.nodeEnv}`);
+            logger.info(`Port: ${PORT}`);
+            logger.info(`MongoDB Connection Status: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Connecting/Disconnected'}`);
+            logger.info('Startup completion status: SUCCESS');
+            logger.info('===========================');
+            console.log(`🌐 [URL] http://localhost:${PORT}`);
         });
 
         const runExpire = async () => {
@@ -141,7 +155,7 @@ const startServer = async () => {
         // Handle server errors (like EADDRINUSE)
         server.on('error', (err) => {
             if (err.code === 'EADDRINUSE') {
-                logger.error(`Port ${config.port} is already in use. Please kill the process or use a different port.`);
+                logger.error(`Port ${PORT} is already in use. Please kill the process or use a different port.`);
             } else {
                 logger.error(`Server Error: ${err.message}`);
             }
