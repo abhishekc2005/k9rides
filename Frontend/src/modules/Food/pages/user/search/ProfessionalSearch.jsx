@@ -244,7 +244,7 @@ export default function ProfessionalSearch() {
   const handleClear = () => {
     setQuery("")
     setSelectedCategoryId(null)
-    setSearchParams({})
+    setSearchParams({}, { replace: true })
     setResults({ restaurants: [], dishes: [] })
   }
 
@@ -252,11 +252,11 @@ export default function ProfessionalSearch() {
     const newCat = selectedCategoryId === id ? null : id
     setSelectedCategoryId(newCat)
     if (newCat) {
-        setSearchParams({ ...Object.fromEntries(searchParams), cat: newCat })
+        setSearchParams({ ...Object.fromEntries(searchParams), cat: newCat }, { replace: true })
     } else {
         const p = Object.fromEntries(searchParams)
         delete p.cat
-        setSearchParams(p)
+        setSearchParams(p, { replace: true })
     }
   }
 
@@ -265,13 +265,13 @@ export default function ProfessionalSearch() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-4 py-3 md:hidden">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <button type="button" onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+          <button type="button" onClick={() => navigate('/food/user')} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           
           <form onSubmit={(e) => {
             e.preventDefault()
-            setSearchParams({ q: query, ...(selectedCategoryId ? { cat: selectedCategoryId } : {}) })
+            setSearchParams({ q: query, ...(selectedCategoryId ? { cat: selectedCategoryId } : {}) }, { replace: true })
             performSearch(query, selectedCategoryId)
           }} className="flex-1 relative">
             <button type="submit" className="absolute left-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-rose-500 z-10 transition-colors">
@@ -305,7 +305,7 @@ export default function ProfessionalSearch() {
         <div className="hidden md:block mb-8 relative">
           <form onSubmit={(e) => {
             e.preventDefault()
-            setSearchParams({ q: query, ...(selectedCategoryId ? { cat: selectedCategoryId } : {}) })
+            setSearchParams({ q: query, ...(selectedCategoryId ? { cat: selectedCategoryId } : {}) }, { replace: true })
             performSearch(query, selectedCategoryId)
           }} className="relative">
             <button type="submit" className="absolute left-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-rose-500 z-10 transition-colors">
