@@ -79,7 +79,7 @@ export default function Hero({ settings }) {
             className="flex flex-col sm:flex-row gap-4 pt-2"
           >
             <a
-              href="/login/services"
+              href="/login"
               className="inline-flex items-center justify-center gap-2 bg-[#F5D476] hover:bg-[#C5902A] text-slate-950 hover:text-white font-bold px-8 py-4 rounded-2xl shadow-xl shadow-[#C5902A]/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-[#C5902A]/30 text-base"
             >
               Get Started Now

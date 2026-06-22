@@ -77,7 +77,7 @@ export default function Navbar({ settings }) {
               Sign In
             </a>
             <a
-              href="/login/services"
+              href="/login"
               className="inline-flex items-center gap-1.5 bg-[#F5D476] hover:bg-[#C5902A] text-slate-950 hover:text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-lg shadow-[#C5902A]/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[#C5902A]/30"
             >
               Get Started
@@ -145,7 +145,7 @@ export default function Navbar({ settings }) {
                   Sign In
                 </a>
                 <a
-                  href="/login/services"
+                  href="/login"
                   className="text-center bg-[#F5D476] hover:bg-[#C5902A] text-slate-950 hover:text-white font-bold py-3 rounded-xl shadow-lg shadow-[#C5902A]/20 transition-all duration-300"
                 >
                   Get Started

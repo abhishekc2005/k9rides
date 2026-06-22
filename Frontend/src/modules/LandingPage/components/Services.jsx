@@ -118,7 +118,7 @@ export default function Services() {
 
                 <div className="pt-6 border-t border-slate-100 dark:border-slate-800/50 mt-6 flex justify-between items-center">
                   <a
-                    href="/login/services"
+                    href="/login"
                     className="inline-flex items-center gap-1 text-xs font-black text-[#C5902A] dark:text-[#F5D476] hover:text-[#8E5C0D] transition-colors"
                   >
                     Open Service

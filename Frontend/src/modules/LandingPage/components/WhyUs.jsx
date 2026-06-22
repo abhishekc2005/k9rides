@@ -100,7 +100,7 @@ export default function WhyUs() {
             </p>
             <div className="pt-2">
               <a
-                href="/login/services"
+                href="/login"
                 className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-[#C5902A] dark:hover:bg-[#8E5C0D] text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg transition-all duration-300"
               >
                 Try the Super-App

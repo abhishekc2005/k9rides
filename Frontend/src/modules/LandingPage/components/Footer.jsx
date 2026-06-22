@@ -13,10 +13,10 @@ export default function Footer({ settings }) {
       { name: 'Newsroom', href: '/taxi/newsroom' }
     ],
     services: [
-      { name: 'Ride Hailing', href: '/login/services' },
-      { name: 'Food Delivery', href: '/login/services' },
-      { name: 'Parcels & Logistics', href: '/login/services' },
-      { name: 'Airport Transfers', href: '/login/services' }
+      { name: 'Ride Hailing', href: '/login' },
+      { name: 'Food Delivery', href: '/login' },
+      { name: 'Parcels & Logistics', href: '/login' },
+      { name: 'Airport Transfers', href: '/login' }
     ],
     legal: [
       { name: 'Terms of Service', href: '/taxi/terms' },
@@ -34,8 +34,8 @@ export default function Footer({ settings }) {
     { icon: FaLinkedin, href: settings?.social_links?.linkedin || '#', colorClass: 'text-[#0A66C2]' }
   ]
 
-  const playStoreUrl = settings?.play_store_url || '/login/services'
-  const appStoreUrl = settings?.app_store_url || '/login/services'
+  const playStoreUrl = settings?.play_store_url || '/login'
+  const appStoreUrl = settings?.app_store_url || '/login'
 
   const contactAddress = settings?.contact_address || 'K9 Village, Siliguri, West Bengal, India'
   const contactPhone = settings?.contact_phone || '+91 7358789910'

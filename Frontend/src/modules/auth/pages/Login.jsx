@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useState, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom"
+import { Routes, Route, Navigate, Link, useNavigate, useLocation } from "react-router-dom"
 import { Phone, Lock, ArrowRight, ArrowLeft, ShieldCheck, Loader2, UtensilsCrossed, Car, ShoppingBag, Building2 } from "lucide-react"
 import { toast } from "sonner"
 import apiClient, { authAPI } from "@food/api"
@@ -20,6 +20,7 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
   const [name, setName] = useState("")
   const [pendingAuthData, setPendingAuthData] = useState(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const submitting = useRef(false)
 
   const getWebFcmTokenForLogin = async () => {
@@ -81,60 +82,13 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
     return normalizedToken
   }
 
-  // Keep /login/services visually consistent (light) regardless of global app theme.
-  // Scope-limited: only active while selector view is mounted.
-  useLayoutEffect(() => {
-    if (typeof document === "undefined") return
-    const html = document.documentElement
-    const body = document.body
-    const root = document.getElementById("root")
-    let htmlObserver = null
-    let bodyObserver = null
-    let rootObserver = null
-
-    if (viewType !== "selector") {
-      return
-    }
-
-    const enforceLight = () => {
-      if (html.classList.contains("dark")) {
-        html.classList.remove("dark")
-      }
-      if (body?.classList.contains("dark")) {
-        body.classList.remove("dark")
-      }
-      if (root?.classList.contains("dark")) {
-        root.classList.remove("dark")
-      }
-    }
-    enforceLight()
-
-    // Enforce priority: while selector is open, keep this page in light mode
-    // even if any other module tries to re-apply "dark" on <html> or <body>.
-    htmlObserver = new MutationObserver(enforceLight)
-    htmlObserver.observe(html, { attributes: true, attributeFilter: ["class"] })
-    if (body) {
-      bodyObserver = new MutationObserver(enforceLight)
-      bodyObserver.observe(body, { attributes: true, attributeFilter: ["class"] })
-    }
-    if (root) {
-      rootObserver = new MutationObserver(enforceLight)
-      rootObserver.observe(root, { attributes: true, attributeFilter: ["class"] })
-    }
-
-    return () => {
-      if (htmlObserver) htmlObserver.disconnect()
-      if (bodyObserver) bodyObserver.disconnect()
-      if (rootObserver) rootObserver.disconnect()
-    }
-  }, [viewType])
-
-  // Check if already logged in on mount - if at login page, redirect to services
+  // Check if already logged in on mount - if at login page, redirect to default authenticated path
   useEffect(() => {
     if (isUnifiedAuthenticated() && viewType === "auth") {
-      navigate("/login/services", { replace: true })
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true })
     }
-  }, [viewType, navigate])
+  }, [viewType, navigate, location])
 
   const normalizedPhone = () => {
     const digits = String(phoneNumber).replace(/\D/g, "").slice(-15)
@@ -323,7 +277,8 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
         console.warn("[Auth] FCM save route failed after login:", fcmSaveError?.message || fcmSaveError)
       }
       toast.success("Authentication successful!")
-      navigate("/login/services")
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true })
     } catch (err) {
       const status = err?.response?.status
       let msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Invalid OTP. Please try again."
@@ -381,7 +336,8 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
 
       setUnifiedAuthData(nextData)
       toast.success("Profile completed successfully!")
-      navigate("/login/services")
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true })
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -409,33 +365,9 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
   }
 
-  const selectionOptions = [
-    {
-      id: "food",
-      name: "Food Delivery",
-      description: "Order from the best restaurants around you",
-      icon: UtensilsCrossed,
-      color: "bg-[#1A1A1A]",
-      path: "/food/user",
-      delay: 0.1
-    },
-    {
-      id: "taxi",
-      name: "Ride Hailing",
-      description: "Book safe and reliable rides instantly",
-      icon: Car,
-      color: "bg-[#F38F24]",
-      path: "/taxi/user",
-      delay: 0.2
-    }
-  ]
-
   return (
     <div
-      className={cn(
-        "min-h-screen flex flex-col md:flex-row overflow-hidden font-sans",
-        viewType === "selector" ? "bg-[#FDFDFD]" : "bg-[#F8F9FA] dark:bg-[#1A1A1A]"
-      )}
+      className="min-h-screen flex flex-col md:flex-row overflow-hidden font-sans bg-[#F8F9FA] dark:bg-[#1A1A1A]"
     >
       {/* Premium Branding Panel (Hidden on mobile) */}
       <motion.div
@@ -518,263 +450,207 @@ export default function UnifiedOTPFastLogin({ viewType = "auth" }) {
         <div className="flex-1 w-full relative z-20 flex flex-col items-center justify-center py-4 lg:justify-center">
           <div className="w-full max-w-[420px] px-6 w-full flex flex-col items-center">
             
-            <AnimatePresence mode="wait">
-              {viewType === "auth" ? (
-                <motion.div
-                  key="auth-view"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="w-full flex flex-col items-center"
-                >
-                  {/* Circular Logo */}
-                  <img 
-                    src={getDynamicLogo()} 
-                    alt={getCompanyName()} 
-                    className="w-[84px] h-[84px] rounded-full object-cover shadow-lg mb-6" 
-                  />
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="w-full flex flex-col items-center"
+            >
+              {/* Circular Logo */}
+              <img 
+                src={getDynamicLogo()} 
+                alt={getCompanyName()} 
+                className="w-[84px] h-[84px] rounded-full object-cover shadow-lg mb-6" 
+              />
 
-                  <div className="text-center mb-8">
-                    <h2 className="text-[32px] leading-tight font-black text-[#1A1A1A] tracking-tight mb-2">
-                      Welcome to {getCompanyName()}
-                    </h2>
-                    <p className="text-[#1A1A1A] text-[15px] font-medium max-w-[28ch] mx-auto">
-                      Enter your phone number to<br />access the unified ecosystem.
-                    </p>
-                  </div>
+              <div className="text-center mb-8">
+                <h2 className="text-[32px] leading-tight font-black text-[#1A1A1A] tracking-tight mb-2">
+                  Welcome to {getCompanyName()}
+                </h2>
+                <p className="text-[#1A1A1A] text-[15px] font-medium max-w-[28ch] mx-auto">
+                  Enter your phone number to<br />access the unified ecosystem.
+                </p>
+              </div>
 
-                  <form
-                    onSubmit={
-                      step === 1
-                        ? handleSendOTP
-                        : step === 2
-                          ? handleVerifyOTP
-                          : handleCompleteProfile
-                    }
-                    className="w-full flex flex-col space-y-6"
-                  >
+              <form
+                onSubmit={
+                  step === 1
+                    ? handleSendOTP
+                    : step === 2
+                      ? handleVerifyOTP
+                      : handleCompleteProfile
+                }
+                className="w-full flex flex-col space-y-6"
+              >
+                <div className="w-full">
+                  {step === 1 ? (
                     <div className="w-full">
-                      {step === 1 ? (
-                        <div className="w-full">
-                          <div className="relative w-full h-[60px] rounded-full border-[1.5px] border-[#F38F24] shadow-[inset_0_4px_16px_rgba(0,0,0,0.06)] bg-gradient-to-b from-white to-gray-200/80 flex items-center px-6 overflow-hidden">
-                            <span className="text-[20px] font-medium text-[#1A1A1A] shrink-0">+91</span>
-                            <div className="w-[1px] h-[26px] bg-gray-400 mx-3 opacity-50 shrink-0"></div>
-                            <input
-                              type="tel"
-                              required
-                              autoFocus
-                              value={phoneNumber}
-                              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                              maxLength={10}
-                              className="flex-1 min-w-0 h-full bg-transparent text-[20px] font-medium text-[#1A1A1A] outline-none placeholder:text-gray-500 tracking-wider"
-                              placeholder="9999999999"
-                            />
-                          </div>
-                        </div>
-                      ) : step === 2 ? (
-                        <div className="space-y-5">
-                          <div className="flex items-center justify-between p-3 bg-white rounded-full border border-gray-200 shadow-sm px-5">
-                            <div>
-                              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Code sent to</p>
-                              <p className="text-[15px] font-black text-slate-900 tracking-wide">+91 {phoneNumber}</p>
-                            </div>
-                            <button 
-                              type="button" 
-                              onClick={handleEditNumber} 
-                              className="px-4 py-1.5 hover:bg-gray-100 rounded-full text-[13px] font-bold text-slate-900 transition-colors"
-                            >
-                              Edit
-                            </button>
-                          </div>
-
-                          <div className="space-y-4">
-                             <div className="flex justify-between gap-3">
-                               {[0, 1, 2, 3].map((index) => (
-                                 <input
-                                   key={index}
-                                   id={`otp-${index}`}
-                                   type="tel"
-                                   inputMode="numeric"
-                                   required
-                                   autoFocus={index === 0}
-                                   value={otp[index] || ""}
-                                   onChange={(e) => {
-                                     const val = e.target.value.replace(/\D/g, "").slice(-1);
-                                     if (!val) return;
-                                     const newOtp = otp.split("");
-                                     newOtp[index] = val;
-                                     const combined = newOtp.join("").slice(0, 4);
-                                     setOtp(combined);
-                                     if (index < 3 && val) document.getElementById(`otp-${index + 1}`)?.focus();
-                                   }}
-                                   onKeyDown={(e) => {
-                                     if (e.key === "Backspace" && !otp[index] && index > 0) {
-                                       document.getElementById(`otp-${index - 1}`)?.focus();
-                                     }
-                                   }}
-                                   className="w-full aspect-square text-center text-[28px] font-black bg-white border border-gray-200 focus:border-[#F38F24] rounded-2xl outline-none transition-all text-slate-900 shadow-sm"
-                                   placeholder="-"
-                                 />
-                               ))}
-                             </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between mt-4 px-2">
-                            <span className="text-[14px] font-medium text-gray-600">Didn't receive it?</span>
-                            {resendTimer > 0 ? (
-                              <span className="text-[14px] font-bold text-gray-400">
-                                Resend in {formatResendTimer(resendTimer)}
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={handleResendOTP}
-                                className="text-[14px] font-bold text-[#F38F24] hover:text-[#d97716] transition-colors"
-                              >
-                                Resend Code
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-5">
-                          <div className="flex items-center justify-between p-3 bg-white rounded-full border border-gray-200 shadow-sm px-5">
-                            <div>
-                              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">New account</p>
-                              <p className="text-[15px] font-black text-slate-900 tracking-wide">+91 {phoneNumber}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleEditNumber}
-                              className="px-4 py-1.5 hover:bg-gray-100 rounded-full text-[13px] font-bold text-slate-900 transition-colors"
-                            >
-                              Edit
-                            </button>
-                          </div>
-
-                          <div className="relative w-full h-[60px] rounded-full border-[1.5px] border-[#F38F24] shadow-[inset_0_4px_16px_rgba(0,0,0,0.06)] bg-gradient-to-b from-white to-gray-200/80 flex items-center px-6 overflow-hidden">
-                            <input
-                              type="text"
-                              required
-                              autoFocus
-                              value={name}
-                              onChange={(e) => setName(e.target.value)}
-                              className="flex-1 min-w-0 h-full bg-transparent text-[20px] font-medium text-[#1A1A1A] outline-none placeholder:text-gray-500"
-                              placeholder="Enter your full name"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-6 pt-2 flex flex-col items-center">
-                      <p className="text-center text-[13px] text-gray-800 mb-5 px-4 font-medium leading-relaxed max-w-[30ch]">
-                        By continuing, you agree to our{" "}
-                        <Link to="/terms" className="font-bold text-slate-900 hover:underline">Terms</Link>
-                        {" "}and{" "}
-                        <Link to="/privacy" className="font-bold text-slate-900 hover:underline">Privacy Policy</Link>.
-                      </p>
-
-                      <button
-                        type="submit"
-                        disabled={
-                          loading ||
-                          (step === 1 && String(phoneNumber).length < 10) ||
-                          (step === 2 && otp.length !== 4) ||
-                          (step === 3 && String(name).trim().length < 2)
-                        }
-                        className={`w-full h-[60px] rounded-full font-semibold text-[17px] transition-all flex items-center justify-center gap-3 ${
-                          loading ||
-                          (step === 1 && String(phoneNumber).length < 10) ||
-                          (step === 2 && otp.length !== 4) ||
-                          (step === 3 && String(name).trim().length < 2)
-                            ? "bg-[#E5E7EB] text-[#6B7280] cursor-not-allowed shadow-inner"
-                            : "bg-[#1A1A1A] text-white shadow-lg active:scale-[0.98]"
-                        }`}
-                      >
-                        {loading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <>
-                            {step === 1 ? "Continue securely" : step === 2 ? "Verify & Login" : "Complete Profile"}
-                            <ArrowRight className={`w-5 h-5 ${
-                              loading ||
-                              (step === 1 && String(phoneNumber).length < 10) ||
-                              (step === 2 && otp.length !== 4) ||
-                              (step === 3 && String(name).trim().length < 2)
-                                ? 'text-[#9CA3AF]'
-                                : 'text-[#F38F24]'
-                            }`} />
-                          </>
-                        )}
-                      </button>
-                      
-                      <div className="mt-6 mb-2 flex flex-col items-center justify-center gap-3">
-                        <div className="flex items-center gap-2 text-[12px] font-medium text-gray-700">
-                          <ShieldCheck className="w-4 h-4" />
-                          <span className="tracking-wide">SECURELY ENCRYPTED</span>
-                        </div>
-                        
-                        <div className="flex items-center text-[14px] font-medium text-gray-800">
-                          <Link to="/support" className="hover:text-black transition-colors">Help & Support</Link>
-                        </div>
+                      <div className="relative w-full h-[60px] rounded-full border-[1.5px] border-[#F38F24] shadow-[inset_0_4px_16px_rgba(0,0,0,0.06)] bg-gradient-to-b from-white to-gray-200/80 flex items-center px-6 overflow-hidden">
+                        <span className="text-[20px] font-medium text-[#1A1A1A] shrink-0">+91</span>
+                        <div className="w-[1px] h-[26px] bg-gray-400 mx-3 opacity-50 shrink-0"></div>
+                        <input
+                          type="tel"
+                          required
+                          autoFocus
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                          maxLength={10}
+                          className="flex-1 min-w-0 h-full bg-transparent text-[20px] font-medium text-[#1A1A1A] outline-none placeholder:text-gray-500 tracking-wider"
+                          placeholder="9999999999"
+                        />
                       </div>
                     </div>
-                  </form>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="selector-view"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
-                  className="w-full relative"
-                >
-                  <div className="text-center lg:text-left mb-8 lg:mb-10">
-                    <h2 className="text-[32px] leading-tight font-black text-slate-900 dark:text-white tracking-tight mb-3">
-                      Choose a Service
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-[15px] max-w-[28ch] mx-auto lg:mx-0">
-                      Select the module you want to access today.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4">
-                    {selectionOptions.map((opt, idx) => {
-                      const Icon = opt.icon
-                      return (
-                        <motion.div
-                          key={opt.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 * idx }}
-                          onClick={() => navigate(opt.path)}
-                          className="group cursor-pointer bg-white border border-gray-200 rounded-3xl p-5 lg:p-6 shadow-sm hover:shadow-md hover:border-[#F38F24]/30 transition-all duration-300"
+                  ) : step === 2 ? (
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between p-3 bg-white rounded-full border border-gray-200 shadow-sm px-5">
+                        <div>
+                          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Code sent to</p>
+                          <p className="text-[15px] font-black text-slate-900 tracking-wide">+91 {phoneNumber}</p>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={handleEditNumber} 
+                          className="px-4 py-1.5 hover:bg-gray-100 rounded-full text-[13px] font-bold text-slate-900 transition-colors"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex gap-4 items-center">
-                              <div className={cn(
-                                "w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm transition-transform group-hover:scale-105",
-                                opt.id === 'food' ? "bg-[#1A1A1A] text-white" : "bg-[#F38F24] text-white"
-                              )}>
-                                <Icon className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <h3 className="text-[18px] font-bold text-slate-900 mb-0.5">{opt.name}</h3>
-                                <p className="text-slate-500 text-[13px] font-medium leading-tight max-w-[20ch]">{opt.description}</p>
-                              </div>
-                            </div>
-                            <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-[#F38F24]/10 transition-colors shrink-0">
-                               <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-[#F38F24] transition-colors" />
-                            </div>
-                          </div>
-                        </motion.div>
-                      )
-                    })}
+                          Edit
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                         <div className="flex justify-between gap-3">
+                           {[0, 1, 2, 3].map((index) => (
+                             <input
+                               key={index}
+                               id={`otp-${index}`}
+                               type="tel"
+                               inputMode="numeric"
+                               required
+                               autoFocus={index === 0}
+                               value={otp[index] || ""}
+                               onChange={(e) => {
+                                 const val = e.target.value.replace(/\D/g, "").slice(-1);
+                                 if (!val) return;
+                                 const newOtp = otp.split("");
+                                 newOtp[index] = val;
+                                 const combined = newOtp.join("").slice(0, 4);
+                                 setOtp(combined);
+                                 if (index < 3 && val) document.getElementById(`otp-${index + 1}`)?.focus();
+                               }}
+                               onKeyDown={(e) => {
+                                 if (e.key === "Backspace" && !otp[index] && index > 0) {
+                                   document.getElementById(`otp-${index - 1}`)?.focus();
+                                 }
+                               }}
+                               className="w-full aspect-square text-center text-[28px] font-black bg-white border border-gray-200 focus:border-[#F38F24] rounded-2xl outline-none transition-all text-slate-900 shadow-sm"
+                               placeholder="-"
+                             />
+                           ))}
+                         </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-4 px-2">
+                        <span className="text-[14px] font-medium text-gray-600">Didn't receive it?</span>
+                        {resendTimer > 0 ? (
+                          <span className="text-[14px] font-bold text-gray-400">
+                            Resend in {formatResendTimer(resendTimer)}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleResendOTP}
+                            className="text-[14px] font-bold text-[#F38F24] hover:text-[#d97716] transition-colors"
+                          >
+                            Resend Code
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between p-3 bg-white rounded-full border border-gray-200 shadow-sm px-5">
+                        <div>
+                          <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">New account</p>
+                          <p className="text-[15px] font-black text-slate-900 tracking-wide">+91 {phoneNumber}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleEditNumber}
+                          className="px-4 py-1.5 hover:bg-gray-100 rounded-full text-[13px] font-bold text-slate-900 transition-colors"
+                        >
+                          Edit
+                        </button>
+                      </div>
+
+                      <div className="relative w-full h-[60px] rounded-full border-[1.5px] border-[#F38F24] shadow-[inset_0_4px_16px_rgba(0,0,0,0.06)] bg-gradient-to-b from-white to-gray-200/80 flex items-center px-6 overflow-hidden">
+                        <input
+                          type="text"
+                          required
+                          autoFocus
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="flex-1 min-w-0 h-full bg-transparent text-[20px] font-medium text-[#1A1A1A] outline-none placeholder:text-gray-500"
+                          placeholder="Enter your full name"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 pt-2 flex flex-col items-center">
+                  <p className="text-center text-[13px] text-gray-800 mb-5 px-4 font-medium leading-relaxed max-w-[30ch]">
+                    By continuing, you agree to our{" "}
+                    <Link to="/terms" className="font-bold text-slate-900 hover:underline">Terms</Link>
+                    {" "}and{" "}
+                    <Link to="/privacy" className="font-bold text-slate-900 hover:underline">Privacy Policy</Link>.
+                  </p>
+
+                  <button
+                    type="submit"
+                    disabled={
+                      loading ||
+                      (step === 1 && String(phoneNumber).length < 10) ||
+                      (step === 2 && otp.length !== 4) ||
+                      (step === 3 && String(name).trim().length < 2)
+                    }
+                    className={`w-full h-[60px] rounded-full font-semibold text-[17px] transition-all flex items-center justify-center gap-3 ${
+                      loading ||
+                      (step === 1 && String(phoneNumber).length < 10) ||
+                      (step === 2 && otp.length !== 4) ||
+                      (step === 3 && String(name).trim().length < 2)
+                        ? "bg-[#E5E7EB] text-[#6B7280] cursor-not-allowed shadow-inner"
+                        : "bg-[#1A1A1A] text-white shadow-lg active:scale-[0.98]"
+                    }`}
+                  >
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        {step === 1 ? "Continue securely" : step === 2 ? "Verify & Login" : "Complete Profile"}
+                        <ArrowRight className={`w-5 h-5 ${
+                          loading ||
+                          (step === 1 && String(phoneNumber).length < 10) ||
+                          (step === 2 && otp.length !== 4) ||
+                          (step === 3 && String(name).trim().length < 2)
+                            ? 'text-[#9CA3AF]'
+                            : 'text-[#F38F24]'
+                        }`} />
+                      </>
+                    )}
+                  </button>
+                  
+                  <div className="mt-6 mb-2 flex flex-col items-center justify-center gap-3">
+                    <div className="flex items-center gap-2 text-[12px] font-medium text-gray-700">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span className="tracking-wide">SECURELY ENCRYPTED</span>
+                    </div>
+                    
+                    <div className="flex items-center text-[14px] font-medium text-gray-800">
+                      <Link to="/support" className="hover:text-black transition-colors">Help & Support</Link>
+                    </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+              </form>
+            </motion.div>
           </div>
         </div>
       </div>

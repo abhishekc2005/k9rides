@@ -10,7 +10,6 @@ export default function AuthRoutes() {
       <Routes>
         <Route index element={<Login viewType="auth" />} />
         <Route path="login" element={<Login viewType="auth" />} />
-        <Route path="services" element={<Login viewType="selector" />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
