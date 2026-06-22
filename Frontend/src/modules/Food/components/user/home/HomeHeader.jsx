@@ -39,6 +39,13 @@ export default function HomeHeader({
   isCategoryStuck = false,
 }) {
   const navigate = useNavigate();
+  const isTaxi = window.location.pathname.includes('/taxi');
+  const theme = {
+    activeBg: isTaxi ? 'bg-[#1e3a8a]' : 'bg-[#b81d24]',
+    activeHex: isTaxi ? '#1e3a8a' : '#b81d24',
+    inactiveHex: isTaxi ? '#1e293b' : '#4a0b0e',
+    containerHex: isTaxi ? '#0f172a' : '#3b070a',
+  };
 
   const [notifications, setNotifications] = useState(() => {
     const saved = localStorage.getItem('food_user_notifications');
@@ -175,7 +182,7 @@ export default function HomeHeader({
 
   return (
     <>
-      <div className="relative h-[340px] w-full overflow-hidden rounded-b-[2rem] shadow-[0_10px_40px_rgba(113,19,19,0.3)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+      <div className="relative h-[360px] md:h-[340px] w-full overflow-hidden rounded-b-[2rem] shadow-[0_10px_40px_rgba(113,19,19,0.3)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
         
         {/* Sliding Background Track */}
         <div 
@@ -193,7 +200,7 @@ export default function HomeHeader({
               )}
               
               {/* Banner Graphic - Positioned safely at the bottom below where the search bar will be */}
-              <div className="absolute inset-x-0 bottom-6 h-[140px] px-2 flex flex-col justify-end">
+              <div className="absolute inset-x-0 bottom-2 h-[140px] px-2 flex flex-col justify-end">
                 {banner.content}
               </div>
             </div>
@@ -321,7 +328,10 @@ export default function HomeHeader({
         
         {/* Mobile Option Buttons (Food & Taxi) */}
         <div className="absolute top-[68px] inset-x-0 z-20 px-4 md:hidden flex flex-col pointer-events-auto overflow-visible">
-          <div className="custom-tab-container overflow-visible">
+          <div 
+            className="custom-tab-container overflow-visible"
+            style={{ backgroundColor: theme.containerHex }}
+          >
             {/* Food Button */}
             <button
               onClick={() => navigate('/food/user')}
@@ -330,16 +340,19 @@ export default function HomeHeader({
                   ? 'custom-tab-active'
                   : 'custom-tab-inactive'
               }`}
+              style={
+                !window.location.pathname.includes('/food')
+                  ? { backgroundColor: theme.inactiveHex }
+                  : {}
+              }
             >
               {window.location.pathname.includes('/food') && (
-                <motion.div
-                  layoutId="activeTabBg"
-                  className="absolute inset-0 bg-[#b81d24] rounded-t-[16px]"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                <div
+                  className={`absolute inset-0 rounded-t-[16px] ${theme.activeBg}`}
                 />
               )}
-              <img src={foodIcon} alt="Food" className="custom-tab-icon" />
-              <span className="relative z-10">Food</span>
+              <img src={foodIcon} alt="K9Food" className="custom-tab-icon" />
+              <span className="relative z-10">K9Food</span>
             </button>
 
             {/* Taxi Button */}
@@ -350,25 +363,34 @@ export default function HomeHeader({
                   ? 'custom-tab-active'
                   : 'custom-tab-inactive'
               }`}
+              style={
+                !window.location.pathname.includes('/taxi')
+                  ? { backgroundColor: theme.inactiveHex }
+                  : {}
+              }
             >
               {window.location.pathname.includes('/taxi') && (
-                <motion.div
-                  layoutId="activeTabBg"
-                  className="absolute inset-0 bg-[#b81d24] rounded-t-[16px]"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                <div
+                  className={`absolute inset-0 rounded-t-[16px] ${theme.activeBg}`}
                 />
               )}
-              <img src={taxiIcon} alt="Taxi" className="custom-tab-icon" />
-              <span className="relative z-10">Taxi</span>
+              <img src={taxiIcon} alt="K9Rides" className="custom-tab-icon" />
+              <span className="relative z-10">K9Rides</span>
             </button>
           </div>
           <div className="flex w-full overflow-visible -mt-[1px] z-15">
-            <div className={`h-[6px] flex-1 transition-colors duration-200 ${
-              window.location.pathname.includes('/food') ? 'bg-[#b81d24]' : 'bg-[#4a0b0e]'
-            }`} />
-            <div className={`h-[6px] flex-1 transition-colors duration-200 ${
-              window.location.pathname.includes('/taxi') ? 'bg-[#b81d24]' : 'bg-[#4a0b0e]'
-            }`} />
+            <div 
+              className="h-[6px] flex-1 transition-colors duration-200" 
+              style={{
+                backgroundColor: window.location.pathname.includes('/food') ? theme.activeHex : theme.inactiveHex
+              }}
+            />
+            <div 
+              className="h-[6px] flex-1 transition-colors duration-200" 
+              style={{
+                backgroundColor: window.location.pathname.includes('/taxi') ? theme.activeHex : theme.inactiveHex
+              }}
+            />
           </div>
         </div>
         
@@ -385,7 +407,7 @@ export default function HomeHeader({
 
       {/* Sticky Search Bar wrapper — position adjusts when categories are also stuck (sticky only on mobile/tablet) */}
       <div
-        className={`relative sticky md:relative z-[60] px-3 pb-0 md:-mt-[256px] -mt-[204px] md:mb-[210px] mb-[158px] pointer-events-none transition-all duration-300 ${
+        className={`relative sticky md:relative z-[60] px-3 pb-0 md:-mt-[256px] -mt-[216px] md:mb-[210px] mb-[150px] pointer-events-none transition-all duration-300 ${
           isCategoryStuck ? 'top-0 pt-2 md:top-auto' : 'top-2 md:top-auto'
         }`}
       >
