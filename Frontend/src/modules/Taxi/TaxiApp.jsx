@@ -21,7 +21,7 @@ import './App.css';
 
 
 // Lazy loading pages for performance
-const UserHome = lazy(() => import('./modules/user/pages/Home'));
+import UserHome from './modules/user/pages/Home';
 const Login = lazy(() => import('./modules/user/pages/auth/Login'));
 const VerifyOTP = lazy(() => import('./modules/user/pages/auth/VerifyOTP'));
 const Signup = lazy(() => import('./modules/user/pages/auth/Signup'));

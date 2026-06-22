@@ -26,10 +26,10 @@ const HeaderGreeting = () => {
   const walletPath = `${routePrefix}/wallet`;
   const isTaxi = window.location.pathname.includes('/taxi');
   const theme = {
-    activeBg: isTaxi ? 'bg-[#1e3a8a]' : 'bg-[#b81d24]',
-    activeHex: isTaxi ? '#1e3a8a' : '#b81d24',
-    inactiveHex: isTaxi ? '#1e293b' : '#4a0b0e',
-    containerHex: isTaxi ? '#0f172a' : '#3b070a',
+    activeBg: isTaxi ? 'bg-[#2563eb]' : 'bg-[#b81d24]',
+    activeHex: isTaxi ? '#2563eb' : '#b81d24',
+    inactiveHex: isTaxi ? '#09101d' : '#4a0b0e',
+    containerHex: isTaxi ? '#0b1528' : '#3b070a',
   };
 
   useEffect(() => {

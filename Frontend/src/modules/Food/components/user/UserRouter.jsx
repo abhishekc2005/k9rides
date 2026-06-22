@@ -7,7 +7,7 @@ import ProtectedRoute from "@food/components/ProtectedRoute"
 // Lazy Loading Pages
 
 // Home & Discovery
-const Home = lazy(() => import("@food/pages/user/Home"))
+import Home from "@food/pages/user/Home"
 const Dining = lazy(() => import("@food/pages/user/Dining"))
 const DiningRestaurants = lazy(() => import("@food/pages/user/DiningRestaurants"))
 const DiningCategory = lazy(() => import("@food/pages/user/DiningCategory"))

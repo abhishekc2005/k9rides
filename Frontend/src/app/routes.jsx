@@ -5,9 +5,9 @@ import { applyFoodUserTheme, applySavedTheme, applyTheme } from '../shared/utils
 
 const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 
-// Lazy load the Food service module (Quick-spicy app)
-const FoodApp = lazy(() => import('../modules/Food/routes'))
-const TaxiApp = lazy(() => import('../modules/Taxi/TaxiApp'))
+// Eagerly import the Food and Taxi service modules for fast, smooth transitions without reloads
+import FoodApp from '../modules/Food/routes'
+import TaxiApp from '../modules/Taxi/TaxiApp'
 const AuthApp = lazy(() => import('../modules/auth/routes'))
 const HelpSupportPage = lazy(() => import('../modules/auth/pages/HelpSupportPage'))
 const TermsPage = lazy(() => import('../modules/auth/pages/TermsPage'))
