@@ -71,6 +71,29 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
     order.restaurantId?.ownerPhone ||
     '';
   const deliveryAddress = order?.deliveryAddress || {};
+  
+  const customerName =
+    order.customerName ||
+    order.deliveryAddress?.fullName ||
+    order.deliveryAddress?.name ||
+    order.userId?.name ||
+    order.userName ||
+    '';
+
+  const customerPhone =
+    order.customerPhone ||
+    order.userPhone ||
+    order.deliveryAddress?.phone ||
+    order.userId?.phone ||
+    order.user?.phone ||
+    '';
+
+  const telLink = useMemo(() => {
+    if (!customerPhone) return '';
+    const clean = String(customerPhone).replace(/\D/g, '');
+    if (clean.length === 10) return `tel:+91${clean}`;
+    return customerPhone.startsWith('+') ? `tel:${customerPhone}` : `tel:+${clean}`;
+  }, [customerPhone]);
 
   const geoCoords =
     Array.isArray(deliveryAddress?.location?.coordinates) &&
@@ -200,11 +223,26 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                   <div className="pt-1">
                     <div className="flex items-center justify-between">
                        <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-blue-600 mb-0.5">Customer Drop</h4>
-                       {mapsLink && (
-                        <a href={mapsLink} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors">
-                          Open Map
-                        </a>
-                      )}
+                       <div className="flex items-center gap-2">
+                         {mapsLink && (
+                           <a href={mapsLink} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors">
+                             Open Map
+                           </a>
+                         )}
+                         {customerPhone && (
+                           <button
+                             onClick={() => {
+                               if (telLink) {
+                                 window.location.href = telLink;
+                               }
+                             }}
+                             className="shrink-0 w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors active:scale-90"
+                             aria-label="Call customer"
+                           >
+                             <Phone className="w-4 h-4" />
+                           </button>
+                         )}
+                       </div>
                     </div>
                     <h3 className="text-gray-950 font-black text-lg leading-tight mb-0.5">Delivery Location</h3>
                     <p className="text-gray-500 text-[11px] font-bold line-clamp-1">{customerAddress}</p>
