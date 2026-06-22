@@ -174,3 +174,79 @@
 }
 
 html.dark { color-scheme: dark; }
+
+/* Custom Curved Tabs matching SuperfastFood/Mart */
+.custom-tabs-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+.custom-tab-container {
+  display: flex;
+  width: 100%;
+  background-color: #3b070a; /* dark base burgundy background */
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 0;
+  position: relative;
+  z-index: 10;
+  overflow: visible;
+}
+
+.custom-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0 6px 0;
+  font-family: var(--font-poppins);
+  font-weight: 800;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+  transition: all 0.25s ease;
+  position: relative;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  flex: 1;
+}
+
+.custom-tab-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  margin-bottom: 2px;
+  z-index: 10;
+}
+
+/* Active tab styles */
+.custom-tab-active {
+  background-color: #b81d24; /* active bright red */
+  color: #ffffff;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  z-index: 20;
+}
+
+
+/* Inactive tab style */
+.custom-tab-inactive {
+  background-color: #4a0b0e; /* inactive dark maroon */
+  color: rgba(255, 255, 255, 0.55);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+/* Bottom connecting strip matching active tab color */
+.custom-tab-strip {
+  height: 6px;
+  background-color: #b81d24;
+  width: 100%;
+  margin-top: -1px; /* overlap to prevent sub-pixel gaps */
+  position: relative;
+  z-index: 15;
+}
+

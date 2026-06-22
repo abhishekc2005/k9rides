@@ -132,42 +132,56 @@ const HeaderGreeting = () => {
       </div>
 
       {/* Mobile Option Buttons (Food & Taxi) */}
-      <div className="mt-4 md:hidden flex gap-3 pointer-events-auto">
-        {/* Food Button */}
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+      <div className="mt-4 md:hidden flex flex-col pointer-events-auto overflow-visible">
+        <div className="custom-tab-container overflow-visible">
+          {/* Food Button */}
           <button
             onClick={() => navigate('/food/user')}
-            className={`relative overflow-hidden w-full flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md font-bold text-[14px] shadow-sm transition-colors cursor-pointer border ${window.location.pathname.includes('/food') ? 'text-white border-transparent' : 'bg-white border-slate-200 text-slate-800'}`}
+            className={`custom-tab overflow-visible ${
+              window.location.pathname.includes('/food')
+                ? 'custom-tab-active'
+                : 'custom-tab-inactive'
+            }`}
           >
             {window.location.pathname.includes('/food') && (
-              <motion.span
-                layoutId="activeModuleHighlight"
-                className="absolute inset-0 bg-slate-900"
+              <motion.div
+                layoutId="activeTabBg"
+                className="absolute inset-0 bg-[#b81d24] rounded-t-[16px]"
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             )}
-            <img src={foodIcon} alt="Food" className="relative z-10 w-6 h-6 object-contain drop-shadow-sm" />
-            <span className="relative z-10 tracking-wide">Food</span>
+            <img src={foodIcon} alt="Food" className="custom-tab-icon" />
+            <span className="relative z-10">Food</span>
           </button>
-        </motion.div>
 
-        {/* Taxi Button */}
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex-1">
+          {/* Taxi Button */}
           <button
             onClick={() => navigate('/taxi/user')}
-            className={`relative overflow-hidden w-full flex flex-row items-center justify-center gap-2 h-[48px] rounded-full backdrop-blur-md font-bold text-[14px] shadow-sm transition-colors cursor-pointer border ${window.location.pathname.includes('/taxi') ? 'text-white border-transparent' : 'bg-white border-slate-200 text-slate-800'}`}
+            className={`custom-tab overflow-visible ${
+              window.location.pathname.includes('/taxi')
+                ? 'custom-tab-active'
+                : 'custom-tab-inactive'
+            }`}
           >
             {window.location.pathname.includes('/taxi') && (
-              <motion.span
-                layoutId="activeModuleHighlight"
-                className="absolute inset-0 bg-slate-900"
+              <motion.div
+                layoutId="activeTabBg"
+                className="absolute inset-0 bg-[#b81d24] rounded-t-[16px]"
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             )}
-            <img src={taxiIcon} alt="Taxi" className="relative z-10 w-6 h-6 object-contain drop-shadow-sm" />
-            <span className="relative z-10 tracking-wide">Taxi</span>
+            <img src={taxiIcon} alt="Taxi" className="custom-tab-icon" />
+            <span className="relative z-10">Taxi</span>
           </button>
-        </motion.div>
+        </div>
+        <div className="flex w-full overflow-visible -mt-[1px] z-15">
+          <div className={`h-[6px] flex-1 transition-colors duration-200 ${
+            window.location.pathname.includes('/food') ? 'bg-[#b81d24]' : 'bg-[#4a0b0e]'
+          }`} />
+          <div className={`h-[6px] flex-1 transition-colors duration-200 ${
+            window.location.pathname.includes('/taxi') ? 'bg-[#b81d24]' : 'bg-[#4a0b0e]'
+          }`} />
+        </div>
       </div>
 
       <motion.div
