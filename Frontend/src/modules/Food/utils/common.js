@@ -13,7 +13,18 @@ export const normalizeImageUrl = (imageUrl, backendOrigin = "") => {
   const appProtocol = typeof window !== "undefined" ? window.location?.protocol : "";
   const appHost = typeof window !== "undefined" ? window.location?.hostname : "";
 
-  let normalized = trimmed
+  let decoded = trimmed;
+  try {
+    let next = decodeURIComponent(decoded);
+    while (next !== decoded) {
+      decoded = next;
+      next = decodeURIComponent(decoded);
+    }
+  } catch (_) {
+    decoded = trimmed;
+  }
+
+  let normalized = decoded
     .replace(/\\/g, "/")
     .replace(/^(https?):\/(?!\/)/i, "$1://")
     .replace(/^(https?:\/\/)(https?:\/\/)/i, "$1");

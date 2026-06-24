@@ -20,12 +20,32 @@ const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "")
 const normalizeImageUrl = (imageUrl) => {
   if (typeof imageUrl !== "string" || !imageUrl.trim()) return ""
   const trimmed = imageUrl.trim()
-  if (/^(https?:)?\/\//i.test(trimmed) || /^data:/i.test(trimmed) || /^blob:/i.test(trimmed)) {
-    return trimmed
+  
+  let decoded = trimmed;
+  try {
+    let next = decodeURIComponent(decoded);
+    while (next !== decoded) {
+      decoded = next;
+      next = decodeURIComponent(decoded);
+    }
+  } catch (_) {
+    decoded = trimmed;
   }
-  return trimmed.startsWith("/")
-    ? `${BACKEND_ORIGIN}${trimmed}`
-    : `${BACKEND_ORIGIN}/${trimmed}`
+
+  if (/^(https?:)?\/\//i.test(decoded) || /^data:/i.test(decoded) || /^blob:/i.test(decoded)) {
+    if (decoded.includes(" ")) {
+      try {
+        const parsed = new URL(decoded, window.location.origin);
+        return parsed.toString();
+      } catch (_) {
+        return encodeURI(decoded);
+      }
+    }
+    return decoded;
+  }
+  return decoded.startsWith("/")
+    ? `${BACKEND_ORIGIN}${decoded}`
+    : `${BACKEND_ORIGIN}/${decoded}`
 }
 
 const pickRestaurantImage = (restaurant) => {

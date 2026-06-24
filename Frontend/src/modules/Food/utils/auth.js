@@ -155,6 +155,12 @@ export function clearModuleAuth(module) {
   if (module === "restaurant") {
     clearRestaurantSessionCache();
   }
+  if (module === "user") {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("authenticated");
+    localStorage.removeItem("user");
+  }
   // Also clear any sessionStorage data
   sessionStorage.removeItem(`${module}AuthData`);
 }

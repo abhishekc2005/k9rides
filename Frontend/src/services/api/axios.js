@@ -156,6 +156,12 @@ function clearModuleAuth(module) {
     localStorage.removeItem(`${module}_refreshToken`);
     localStorage.removeItem(`${module}_authenticated`);
     localStorage.removeItem(`${module}_user`);
+    if (module === "user") {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("authenticated");
+      localStorage.removeItem("user");
+    }
   } catch (_) {}
 }
 

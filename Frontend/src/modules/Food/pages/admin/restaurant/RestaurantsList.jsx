@@ -80,9 +80,30 @@ const formatTime12Hour = (value) => {
 
 const normalizeImageUrl = (image) => {
   if (!image) return ""
-  if (typeof image === "string") return image
-  if (typeof image === "object") return image.url || image.secure_url || ""
-  return ""
+  let url = ""
+  if (typeof image === "string") url = image
+  else if (typeof image === "object") url = image.url || image.secure_url || ""
+  
+  if (!url) return ""
+  try {
+    let decoded = url;
+    let next = decodeURIComponent(decoded);
+    while (next !== decoded) {
+      decoded = next;
+      next = decodeURIComponent(decoded);
+    }
+    if (decoded.includes(" ")) {
+      try {
+        const parsed = new URL(decoded, window.location.origin);
+        return parsed.toString();
+      } catch (_) {
+        return encodeURI(decoded);
+      }
+    }
+    return decoded;
+  } catch (_) {
+    return url;
+  }
 }
 
 const getPrimaryRestaurantImage = (restaurant, fallback = "") => {

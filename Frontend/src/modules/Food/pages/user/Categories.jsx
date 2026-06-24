@@ -110,7 +110,18 @@ export default function Categories() {
     if (!trimmed) return "";
     if (/^data:/i.test(trimmed) || /^blob:/i.test(trimmed)) return trimmed;
     
-    const normalizedInput = trimmed
+    let decoded = trimmed;
+    try {
+      let next = decodeURIComponent(decoded);
+      while (next !== decoded) {
+        decoded = next;
+        next = decodeURIComponent(decoded);
+      }
+    } catch (_) {
+      decoded = trimmed;
+    }
+
+    const normalizedInput = decoded
       .replace(/\\/g, "/")
       .replace(/^(https?):\/(?!\/)/i, "$1://")
       .replace(/^(https?:\/\/)(https?:\/\/)/i, "$1");
