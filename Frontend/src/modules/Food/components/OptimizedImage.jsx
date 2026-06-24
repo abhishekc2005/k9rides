@@ -42,7 +42,18 @@ const OptimizedImage = React.memo(({
 
   const appendImageParams = (imageSrc, params) => {
     try {
-      const url = new URL(imageSrc)
+      let decoded = imageSrc;
+      try {
+        let next = decodeURIComponent(decoded);
+        while (next !== decoded) {
+          decoded = next;
+          next = decodeURIComponent(decoded);
+        }
+      } catch (_) {
+        decoded = imageSrc;
+      }
+
+      const url = new URL(decoded)
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.set(key, String(value))
       })
