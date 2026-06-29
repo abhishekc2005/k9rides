@@ -14,9 +14,7 @@ export default function Footer({ settings }) {
 
   const links = {
     company: [
-      { name: 'About Us', href: '/taxi/about' },
-      { name: 'Careers', href: '/taxi/careers' },
-      { name: 'Newsroom', href: '/taxi/newsroom' }
+      { name: 'About Us', href: '/taxi/about' }
     ],
     services: [
       { name: 'Ride Hailing', href: 'https://play.google.com/store/apps/details?id=com.k9bharat.user' },
@@ -25,11 +23,11 @@ export default function Footer({ settings }) {
       { name: 'Airport Transfers', href: 'https://play.google.com/store/apps/details?id=com.k9bharat.user' }
     ],
     legal: [
-      { name: 'Terms of Service', href: '/taxi/terms' },
-      { name: 'Privacy Policy', href: '/taxi/privacy' },
-      { name: 'Refund Policy', href: '/taxi/refund' },
-      { name: 'Cancellation Policy', href: '/taxi/cancellation' },
-      { name: 'FAQs', href: '/taxi/faq' }
+      { name: 'Terms of Service', href: '/terms?tab=terms' },
+      { name: 'Privacy Policy', href: '/terms?tab=privacy' },
+      { name: 'Refund Policy', href: '/terms?tab=refund' },
+      { name: 'Cancellation Policy', href: '/terms?tab=cancellation' },
+      { name: 'FAQs', href: '/support' }
     ]
   }
 
@@ -243,9 +241,9 @@ export default function Footer({ settings }) {
         <div className="border-t border-slate-900 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
           <p>© {currentYear} K9 Rides Inc. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="/taxi/terms" className="hover:text-white transition-colors duration-200">Terms</a>
-            <a href="/taxi/privacy" className="hover:text-white transition-colors duration-200">Privacy</a>
-            <a href="/taxi/support" className="hover:text-white transition-colors duration-200">Support</a>
+            <a href="/terms?tab=terms" className="hover:text-white transition-colors duration-200">Terms</a>
+            <a href="/terms?tab=privacy" className="hover:text-white transition-colors duration-200">Privacy</a>
+            <a href="/support" className="hover:text-white transition-colors duration-200">Support</a>
           </div>
         </div>
       </div>

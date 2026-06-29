@@ -33,11 +33,19 @@ export default function TermsPage({ defaultTab = "terms" }) {
   const location = useLocation()
   const queryParams = new URLSearchParams(location.search)
   const role = queryParams.get("role") // e.g., 'restaurant' or 'delivery'
+  const tabParam = queryParams.get("tab")
 
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState(defaultTab)
+  const [activeTab, setActiveTab] = useState(tabParam || defaultTab)
   const [pageContent, setPageContent] = useState("")
   const [pageTitle, setPageTitle] = useState("Terms & Conditions")
+
+  useEffect(() => {
+    const currentTabParam = new URLSearchParams(location.search).get("tab")
+    if (currentTabParam && currentTabParam !== activeTab) {
+      setActiveTab(currentTabParam)
+    }
+  }, [location.search])
 
   // Legal menu items
   const menuItems = [
@@ -138,11 +146,11 @@ export default function TermsPage({ defaultTab = "terms" }) {
         <div className="max-w-6xl mx-auto relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <button 
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/")}
               className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white mb-3 transition-colors"
             >
               <ArrowLeft className="w-4 h-4 text-[#F38F24]" />
-              Back to Login
+              Back to Home
             </button>
             <h1 className="text-2xl md:text-3xl font-black tracking-tight">
               Legal & Policies
@@ -170,7 +178,10 @@ export default function TermsPage({ defaultTab = "terms" }) {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {
+                    setActiveTab(item.id)
+                    navigate(`?tab=${item.id}${role ? `&role=${role}` : ''}`, { replace: true })
+                  }}
                   className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap shrink-0 ${
                     isActive
                       ? "bg-white border-l-4 border-l-[#F38F24] text-[#F38F24] shadow-sm font-black"
