@@ -14,8 +14,9 @@ import newHeroTaxiImg from '@/assets/ride-removebg-preview.png';
 
 function LandingPage() {
   const navigate = useNavigate();
-  const { settings } = useSettings();
+  const { settings, activeLogo } = useSettings();
   const appName = settings.general?.app_name || 'easytaxi';
+  const appLogo = activeLogo || settings.general?.logo || settings.customization?.logo || '';
   const [activeTab, setActiveTab] = React.useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
@@ -58,7 +59,11 @@ function LandingPage() {
         <div className="new-top-bar">
           <div className="new-logo-container">
              <a href="/" className="new-logo">
-               <span style={{color: '#333'}}>K9 Rides</span>
+               {appLogo ? (
+                 <img src={appLogo} alt={appName} className="h-[40px] w-auto object-contain" />
+               ) : (
+                 <span style={{color: '#333'}}>K9 Rides</span>
+               )}
              </a>
           </div>
           <div className="new-top-contacts">
@@ -78,7 +83,11 @@ function LandingPage() {
           <div className="new-nav-bg-slant"></div>
           <div className="new-nav-container">
             <a href="/" className="mobile-only-logo">
-               <span>K9 Rides</span>
+               {appLogo ? (
+                 <img src={appLogo} alt={appName} className="h-[32px] w-auto object-contain" />
+               ) : (
+                 <span>K9 Rides</span>
+               )}
             </a>
             <nav className={`new-nav-links ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
               <a href="#home" className={`new-nav-link ${activeTab === 'home' ? 'active' : ''}`} onClick={handleRedirect('#home', 'home')}>Home</a>
@@ -256,7 +265,11 @@ function LandingPage() {
         <div className="footer-main-content">
           <div className="footer-col-1">
             <a href="/" className="footer-logo">
-               <span style={{color: '#FFB300', fontSize: '2.5rem', fontWeight: 800}}>K9 Rides</span>
+               {appLogo ? (
+                 <img src={appLogo} alt={appName} className="h-[48px] w-auto object-contain" />
+               ) : (
+                 <span style={{color: '#FFB300', fontSize: '2.5rem', fontWeight: 800}}>K9 Rides</span>
+               )}
             </a>
             <p>We provide the best taxi and ride services in the region. Reliable, fast, and secure rides at your fingertips.</p>
             <p>Our fleet consists of well-maintained vehicles driven by professional drivers to ensure a comfortable journey.</p>

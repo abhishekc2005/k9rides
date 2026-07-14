@@ -9,6 +9,7 @@ gsap.registerPlugin(ScrollTrigger)
 
 export default function Footer({ settings }) {
   const { activeLogo } = useSettings()
+  const appLogo = activeLogo || settings?.general?.logo || settings?.customization?.logo || '';
   const currentYear = new Date().getFullYear()
   const footerRef = useRef(null)
   const topBannerRef = useRef(null)
@@ -118,8 +119,8 @@ export default function Footer({ settings }) {
           {/* Branding Column */}
           <div className="lg:col-span-4 text-left space-y-6">
             <a href="#" className="flex items-center gap-3 group w-fit">
-              {settings?.logo_url ? (
-                <img src={settings.logo_url} alt="K9 Rides" className="h-11 w-auto object-contain bg-white/10 p-1 rounded-lg" loading="lazy" />
+              {appLogo ? (
+                <img src={appLogo} alt="K9 Rides" className="h-11 w-auto object-contain bg-white/10 p-1 rounded-lg" loading="lazy" />
               ) : (
                 <>
                   <div className="h-11 w-11 rounded-xl overflow-hidden shadow-sm bg-white p-0.5 border border-slate-800 group-hover:border-slate-600 transition-colors">
