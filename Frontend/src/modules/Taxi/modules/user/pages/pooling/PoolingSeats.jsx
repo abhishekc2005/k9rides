@@ -53,10 +53,25 @@ const PoolingSeats = () => {
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [bookedSeatIds, setBookedSeatIds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [selectedPickupStop, setSelectedPickupStop] = useState(null);
+  const [selectedDropStop, setSelectedDropStop] = useState(null);
 
   useEffect(() => {
     fetchRouteDetails();
   }, [id, travelDate]);
+
+  useEffect(() => {
+    if (route && selectedVehicle && selectedSchedule) {
+      const seatAvailability = route.seatAvailability || {};
+      const availabilityKey = `${String(selectedVehicle._id)}:${String(selectedSchedule.id)}`;
+      const nextBookedSeatIds = Array.isArray(seatAvailability[availabilityKey])
+        ? seatAvailability[availabilityKey]
+        : [];
+      setBookedSeatIds(nextBookedSeatIds);
+      setSelectedSeats((current) => current.filter((seatId) => !nextBookedSeatIds.includes(seatId)));
+    }
+  }, [route, selectedVehicle, selectedSchedule]);
 
   const fetchRouteDetails = async () => {
     setLoading(true);
@@ -72,23 +87,17 @@ const PoolingSeats = () => {
       setSelectedVehicle(nextVehicle);
 
       const activeSchedules = Array.isArray(routeData?.schedules) ? routeData.schedules : [];
-      const selectedSchedule =
+      const initialSchedule =
         activeSchedules.find((item) => String(item?.status || 'active') === 'active') ||
         activeSchedules[0] ||
         null;
+      setSelectedSchedule(initialSchedule);
 
-      const seatAvailability = routeData?.seatAvailability || {};
-      const availabilityKey =
-        nextVehicle?._id && selectedSchedule?.id
-          ? `${String(nextVehicle._id)}:${String(selectedSchedule.id)}`
-          : '';
-      const nextBookedSeatIds =
-        availabilityKey && Array.isArray(seatAvailability[availabilityKey])
-          ? seatAvailability[availabilityKey]
-          : [];
+      const pickups = Array.isArray(routeData?.pickupPoints) ? routeData.pickupPoints : [];
+      setSelectedPickupStop(pickups[0] || null);
 
-      setBookedSeatIds(nextBookedSeatIds);
-      setSelectedSeats((current) => current.filter((seatId) => !nextBookedSeatIds.includes(seatId)));
+      const drops = Array.isArray(routeData?.dropPoints) ? routeData.dropPoints : [];
+      setSelectedDropStop(drops[0] || null);
     } catch {
       toast.error('Failed to load route details');
     } finally {
@@ -121,26 +130,13 @@ const PoolingSeats = () => {
       return;
     }
 
-    const activeSchedules = Array.isArray(route?.schedules) ? route.schedules : [];
-    const selectedSchedule =
-      activeSchedules.find((item) => String(item?.status || 'active') === 'active') ||
-      activeSchedules[0] ||
-      null;
     if (!selectedSchedule?.id) {
-      toast.error('No active schedule is available for this route');
+      toast.error('No active schedule is selected');
       return;
     }
 
-    const pickupStop =
-      (Array.isArray(route?.pickupPoints) && route.pickupPoints[0]) ||
-      (Array.isArray(route?.stops) && route.stops[0]) ||
-      null;
-    const dropStop =
-      (Array.isArray(route?.dropPoints) && route.dropPoints[0]) ||
-      (Array.isArray(route?.stops) && route.stops[route.stops.length - 1]) ||
-      null;
-    if (!pickupStop?.id || !dropStop?.id) {
-      toast.error('Route pickup or drop point is missing');
+    if (!selectedPickupStop?.id || !selectedDropStop?.id) {
+      toast.error('Boarding or drop-off point is missing');
       return;
     }
 
@@ -152,8 +148,8 @@ const PoolingSeats = () => {
         fareBreakdown: computePoolingFareBreakdown(route, selectedVehicle, selectedSeats.length),
         travelDate,
         schedule: selectedSchedule,
-        pickupStop,
-        dropStop,
+        pickupStop: selectedPickupStop,
+        dropStop: selectedDropStop,
       },
     });
   };
@@ -259,6 +255,84 @@ const PoolingSeats = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Dropdowns / Selectors Card */}
+        <div className="mb-8 rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm space-y-4">
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-805">Trip Details</h3>
+          
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {/* Schedule Selector */}
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <Clock size={12} className="text-indigo-500" />
+                Schedule Time
+              </label>
+              <select
+                value={selectedSchedule?.id || ''}
+                onChange={(e) => {
+                  const matched = route?.schedules?.find((s) => s.id === e.target.value);
+                  if (matched) setSelectedSchedule(matched);
+                }}
+                className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+              >
+                {Array.isArray(route?.schedules) &&
+                  route.schedules
+                    .filter((s) => String(s?.status || 'active') === 'active')
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.departureTime}
+                      </option>
+                    ))}
+              </select>
+            </div>
+
+            {/* Pickup Stop Selector */}
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <Navigation size={12} className="text-emerald-500" />
+                Boarding Point
+              </label>
+              <select
+                value={selectedPickupStop?.id || ''}
+                onChange={(e) => {
+                  const matched = route?.pickupPoints?.find((p) => p.id === e.target.value);
+                  if (matched) setSelectedPickupStop(matched);
+                }}
+                className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+              >
+                {Array.isArray(route?.pickupPoints) &&
+                  route.pickupPoints.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.departureTime ? `(${p.departureTime})` : ''}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Drop Stop Selector */}
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <Navigation size={12} className="text-rose-500 rotate-90" />
+                Drop-off Point
+              </label>
+              <select
+                value={selectedDropStop?.id || ''}
+                onChange={(e) => {
+                  const matched = route?.dropPoints?.find((d) => d.id === e.target.value);
+                  if (matched) setSelectedDropStop(matched);
+                }}
+                className="w-full rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+              >
+                {Array.isArray(route?.dropPoints) &&
+                  route.dropPoints.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} {d.departureTime ? `(${d.departureTime})` : ''}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+        </div>
 
         <div className="mb-10 flex flex-col items-center">
           <p className="mb-6 text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">Select your preferred seat</p>

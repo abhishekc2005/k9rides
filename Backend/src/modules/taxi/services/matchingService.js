@@ -67,6 +67,8 @@ export const buildDriverMatchFilters = ({ zoneId, vehicleTypeId, vehicleTypeIds,
           }
         ]
       };
+    } else if (transportType === 'pooling') {
+      transportFilter = { registerFor: { $in: ['taxi', 'both', 'pooling', 'all'] } };
     } else {
       transportFilter = { registerFor: { $in: [transportType, 'both', 'all'] } };
     }
@@ -74,10 +76,19 @@ export const buildDriverMatchFilters = ({ zoneId, vehicleTypeId, vehicleTypeIds,
 
   const baseFilters = {
     isOnline: true,
-    isOnRide: false,
     'wallet.isBlocked': { $ne: true },
     ...(zoneId ? { zoneId } : {}),
   };
+
+  if (transportType === 'pooling') {
+    baseFilters.isPoolEnabled = true;
+    baseFilters.$or = [
+      { isOnRide: false },
+      { isOnRide: true, activePoolGroupId: { $ne: null } },
+    ];
+  } else {
+    baseFilters.isOnRide = false;
+  }
 
   const andClauses = [];
 
@@ -241,7 +252,7 @@ const findDriversForZone = async ({
     transportType,
   });
   const selectedFields =
-    'name phone socketId vehicleTypeId vehicleType vehicleIconType vehicleNumber vehicleColor vehicleMake vehicleModel rating location zoneId isOnline isOnRide routeBooking';
+    'name phone socketId vehicleTypeId vehicleType vehicleIconType vehicleNumber vehicleColor vehicleMake vehicleModel rating location zoneId isOnline isOnRide routeBooking isPoolEnabled activePoolGroupId poolOccupiedSeats maxPoolSeats activePoolRideCount';
 
   const [liveLocationDrivers, routeBookingDrivers] = await Promise.all([
     Driver.find({
@@ -302,7 +313,24 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
     transportType,
   });
 
-  console.log('[matchDrivers] findDriversForZone returned:', drivers.map(d => ({ id: d._id, name: d.name, vehicleTypeId: d.vehicleTypeId, isOnline: d.isOnline, isOnRide: d.isOnRide })));
+  const requestedSeats = Number(options.seats || 1);
+  const filterPoolingEligible = (driver) => {
+    if (transportType === 'pooling') {
+      if (driver.isPoolEnabled === false) {
+        return false;
+      }
+      if (driver.isOnRide) {
+        const occupied = Number(driver.poolOccupiedSeats || 0);
+        const maxSeats = Number(driver.maxPoolSeats || 4);
+        if (occupied + requestedSeats > maxSeats) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  drivers = drivers.filter(filterPoolingEligible);
 
   const blockedDriverIds = await getDriverIdsBlockedByUpcomingScheduledRides(
     drivers.map((driver) => String(driver?._id || '')),
@@ -319,6 +347,8 @@ export const matchDrivers = async (pickupCoords, options = {}) => {
       vehicleTypeKeys,
       transportType,
     });
+
+    drivers = drivers.filter(filterPoolingEligible);
 
     const fallbackBlockedDriverIds = await getDriverIdsBlockedByUpcomingScheduledRides(
       drivers.map((driver) => String(driver?._id || '')),

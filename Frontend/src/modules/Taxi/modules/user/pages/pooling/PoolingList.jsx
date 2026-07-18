@@ -40,7 +40,7 @@ const PoolingList = () => {
     setLoading(true);
     try {
       const res = await userService.searchPoolingRoutes({ from, to, date });
-      setRoutes(res.data || []);
+      setRoutes(res.data?.data || res.data || []);
     } catch (error) {
       toast.error('Failed to fetch routes');
     } finally {
@@ -217,12 +217,19 @@ const PoolingList = () => {
                     </div>
                     
                     <div className="flex items-center gap-4">
-                      <div className="flex flex-col items-end">
-                         <div className="flex items-center gap-1.5 text-[11px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-widest">
-                           <Zap size={10} fill="currentColor" />
-                           Instant
-                         </div>
-                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 mt-2 tracking-tight">
+                       <div className="flex flex-col items-end">
+                          {route?.poolingRules?.allowInstantBooking ? (
+                            <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-widest">
+                              <Zap size={10} fill="currentColor" />
+                              Instant
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-[11px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full uppercase tracking-widest">
+                              <Clock size={10} />
+                              Request
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 mt-2 tracking-tight">
                            <Users size={12} className="text-slate-300" />
                            {route.maxSeatsPerBooking} seats left
                          </div>

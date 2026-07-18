@@ -414,13 +414,42 @@ html.dark {
 
 /* GPU-Accelerated Premium Gradient Animation for Orange Container background */
 @keyframes premiumOrangeGradient {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .animated-orange-container {
   background: linear-gradient(-45deg, #d82c23, #ff5100, #ff7b00, #b30707);
   background-size: 400% 400%;
   animation: premiumOrangeGradient 12s ease infinite;
+}
+
+/* Moving Duotone Gradient Overlay for full-bleed food carousel */
+@keyframes movingDuotone {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.moving-duotone-overlay {
+  background: linear-gradient(135deg, rgba(255, 107, 61, 0.72) 0%, rgba(255, 62, 127, 0.62) 50%, rgba(255, 107, 61, 0.72) 100%);
+  background-size: 200% 200%;
+  animation: movingDuotone 14s ease-in-out infinite;
 }

@@ -4,6 +4,9 @@ import crypto from 'crypto';
 dotenv.config();
 
 const generateRandomSecret = (name) => {
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error(`[env] ❌ Critical Security Error: ${name} environment variable is required in production mode!`);
+    }   
     const fallback = crypto.randomBytes(32).toString('hex');
     console.warn(`[env] ⚠️ ${name} environment variable is not set. Generated a random secure fallback secret.`);
     return fallback;
@@ -109,6 +112,14 @@ export const config = {
     emailUser: process.env.EMAIL_USER,
     emailPass: process.env.EMAIL_PASS ? String(process.env.EMAIL_PASS).replace(/\s/g, '') : '',
     emailFrom: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@example.com',
+
+    // WhatsApp (Meta Cloud API)
+    whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || '',
+    whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
+    whatsappVersion: process.env.WHATSAPP_VERSION || 'v20.0',
+    whatsappUseTemplate: process.env.WHATSAPP_USE_TEMPLATE === 'true',
+    whatsappFoodTemplateName: process.env.WHATSAPP_FOOD_TEMPLATE_NAME || 'food_invoice',
+    whatsappTaxiTemplateName: process.env.WHATSAPP_TAXI_TEMPLATE_NAME || 'taxi_invoice',
 
     // Petpooja Integration
     petpoojaEnabled: process.env.PETPOOJA_ENABLED === 'true',

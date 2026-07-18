@@ -53,9 +53,8 @@ export default function BottomNavigation() {
                       damping: 32,
                       mass: 1,
                     }}
-                    className={`absolute -inset-y-1.5 bg-[#ff3d00] rounded-[18px] shadow-[0_8px_20px_rgba(255,61,0,0.35)] ${
-                      label === "Switch 99" ? "-inset-x-2.5" : "-inset-x-3.5"
-                    }`}
+                    className={`absolute -inset-y-1.5 bg-[#ff3d00] rounded-[18px] shadow-[0_8px_20px_rgba(255,61,0,0.35)] ${label === "Switch 99" ? "-inset-x-2.5" : "-inset-x-3.5"
+                      }`}
                   />
                 )}
               </AnimatePresence>
@@ -72,9 +71,8 @@ export default function BottomNavigation() {
                 <Icon
                   size={20}
                   strokeWidth={isActive ? 2.5 : 2}
-                  className={`transition-colors duration-300 ${
-                    isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600"
-                  }`}
+                  className={`transition-colors duration-300 ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600"
+                    }`}
                 />
               </motion.div>
 
@@ -86,9 +84,8 @@ export default function BottomNavigation() {
                   scale: isActive ? 1 : 0.95,
                 }}
                 transition={{ duration: 0.2 }}
-                className={`relative z-20 text-[9px] font-black uppercase tracking-[0.12em] mt-1 transition-colors duration-300 ${
-                  isActive ? "text-white" : "text-slate-505"
-                }`}
+                className={`relative z-20 text-[9px] font-black uppercase tracking-[0.12em] mt-1 transition-colors duration-300 ${isActive ? "text-white" : "text-slate-505"
+                  }`}
                 style={{ fontFamily: "'Outfit', sans-serif" }}
               >
                 {label}

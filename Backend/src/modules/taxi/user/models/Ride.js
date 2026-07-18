@@ -466,6 +466,26 @@ const rideSchema = new mongoose.Schema(
       ref: 'TaxiServiceLocation',
       default: null,
     },
+    poolGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TaxiInstantPoolGroup',
+      default: null,
+      index: true,
+    },
+    isPoolRide: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    poolSeats: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+    routeVersion: {
+      type: Number,
+      default: 0,
+    },
     transport_type: {
       type: String,
       enum: ['taxi', 'delivery', 'intercity', 'all'],
@@ -796,5 +816,6 @@ const rideSchema = new mongoose.Schema(
 
 rideSchema.index({ userId: 1, createdAt: -1 });
 rideSchema.index({ driverId: 1, createdAt: -1 });
+rideSchema.index({ poolGroupId: 1 });
 
 export const Ride = mongoose.models.TaxiRide || mongoose.model('TaxiRide', rideSchema);

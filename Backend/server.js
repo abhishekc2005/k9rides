@@ -83,11 +83,72 @@ const startServer = async () => {
             }
         };
 
+        const ensureBusDaysUpdated = async () => {
+            try {
+                const { BusService } = await import('./src/modules/taxi/admin/models/BusService.js');
+                await BusService.updateMany(
+                    { operatorName: "K9 Travels" },
+                    {
+                        $set: {
+                            "schedules.$[].activeDays": ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                        }
+                    }
+                );
+                logger.info('Database settings: Bus schedules active days updated to short codes!');
+            } catch (err) {
+                logger.error(`Error updating bus days: ${err.message}`);
+            }
+        };
+
+        const seedBusDriverInDb = async () => {
+            try {
+                const { BusDriver } = await import('./src/modules/taxi/driver/models/BusDriver.js');
+                const { BusService } = await import('./src/modules/taxi/admin/models/BusService.js');
+
+                const bus = await BusService.findOne({ registrationNumber: "MP04AB9999" });
+                if (bus) {
+                    const phone = "7000123456";
+                    let driver = await BusDriver.findOne({ phone });
+                    if (!driver) {
+                        driver = new BusDriver({ phone });
+                    }
+                    driver.name = "Rajesh Kumar";
+                    driver.email = "rajesh.driver@k9rides.com";
+                    driver.approve = true;
+                    driver.active = true;
+                    driver.status = "approved";
+                    driver.assignedBusServiceId = bus._id;
+                    driver.operatorName = bus.operatorName || "K9 Travels";
+                    driver.busName = bus.busName || "Sleeper Premium AC";
+                    driver.serviceNumber = bus.serviceNumber || "K9-1002";
+                    driver.registrationNumber = bus.registrationNumber || "MP04AB9999";
+                    driver.routeName = bus.route?.routeName || "Bhopal - Indore";
+                    driver.originCity = bus.route?.originCity || "Bhopal";
+                    driver.destinationCity = bus.route?.destinationCity || "Indore";
+                    await driver.save();
+
+                    bus.driverName = driver.name;
+                    bus.driverPhone = driver.phone;
+                    bus.busDriverId = driver._id;
+                    await bus.save();
+                    logger.info('Database settings: Bus Driver seeded and linked to bus successfully!');
+                } else {
+                    logger.warn('Database settings: Seeded bus not found, cannot link driver.');
+                }
+            } catch (err) {
+                logger.error(`Error seeding bus driver: ${err.message}`);
+            }
+        };
+
         if (mongoose.connection.readyState === 1) {
             runWatchdog();
+            ensureBusDaysUpdated();
+            seedBusDriverInDb();
         } else {
             mongoose.connection.once('connected', () => {
                 runWatchdog();
+                ensureBusDaysUpdated();
+                seedBusDriverInDb();
             });
         }
 

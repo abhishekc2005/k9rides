@@ -1,4 +1,7 @@
 import mongoose from 'mongoose';
+import { logger } from '../../../utils/logger.js';
+import { sendTaxiInvoiceEmail } from '../../../services/email.service.js';
+import { sendTaxiInvoiceWhatsApp } from '../../../services/whatsapp.service.js';
 import { ApiError } from '../../../utils/ApiError.js';
 import { normalizePoint, toPoint } from '../../../utils/geo.js';
 import { RIDE_LIVE_STATUS, RIDE_STATUS } from '../constants/index.js';
@@ -1290,7 +1293,7 @@ const activeRideStatuses = [RIDE_STATUS.SEARCHING, RIDE_STATUS.ACCEPTED, RIDE_ST
 const populateRideRealtime = async (rideId) => {
   const ride = await Ride.findById(rideId)
     .populate('deliveryId')
-    .populate('userId', 'name phone')
+    .populate('userId', 'name phone email')
     .populate('driverId', 'name phone profileImage vehicleType vehicleIconType vehicleNumber vehicleColor vehicleMake vehicleModel vehicleImage rating vehicleTypeId');
 
   if (ride && !ride.vehicleIconUrl) {
@@ -1699,13 +1702,25 @@ export const acceptRideAssignment = async ({ rideId, driverId }) => {
       }
 
       const driverVehicleFilter = await buildDriverVehicleAcceptFilter(ride);
-      const driver = await Driver.findOne({
+      const isPooling = ride.isPoolRide || ride.transport_type === 'pooling';
+
+      const driverFilter = {
         _id: driverId,
         isOnline: true,
-        isOnRide: false,
         'wallet.isBlocked': { $ne: true },
         ...driverVehicleFilter,
-      }).session(session);
+      };
+
+      if (isPooling) {
+        driverFilter.$or = [
+          { isOnRide: false },
+          { isOnRide: true, activePoolGroupId: { $ne: null } },
+        ];
+      } else {
+        driverFilter.isOnRide = false;
+      }
+
+      const driver = await Driver.findOne(driverFilter).session(session);
 
       if (!driver) {
         throw new ApiError(409, 'Driver is unavailable to accept this ride');
@@ -1732,12 +1747,27 @@ export const acceptRideAssignment = async ({ rideId, driverId }) => {
       ride.status = RIDE_STATUS.ACCEPTED;
       ride.liveStatus = RIDE_LIVE_STATUS.ACCEPTED;
       ride.acceptedAt = new Date();
+      if (isPooling) {
+        ride.isPoolRide = true;
+      }
       driver.isOnRide = !isRideScheduledForFuture(ride);
 
       await ride.save({ session });
       await driver.save({ session });
       await session.commitTransaction();
       await syncDeliveryWithRide(ride);
+
+      if (isPooling) {
+        const { createPoolGroup, addRideToPoolGroup } = await import('./instantPoolingService.js');
+        if (driver.activePoolGroupId) {
+          const success = await addRideToPoolGroup(driver.activePoolGroupId, ride);
+          if (!success) {
+            await createPoolGroup(driver._id, driver.vehicleTypeId, ride);
+          }
+        } else {
+          await createPoolGroup(driver._id, driver.vehicleTypeId, ride);
+        }
+      }
 
       return ride;
     } catch (error) {
@@ -1782,7 +1812,7 @@ const rideStatusConfig = {
   },
 };
 
-export const updateRideLifecycle = async ({ rideId, driverId, nextStatus, paymentMethod, fare, baseFare, waitingChargeAmount, timeChargeAmount, distanceChargeAmount, additionalCharge, driverPaymentCollection }) => {
+export const updateRideLifecycle = async ({ rideId, driverId, nextStatus, paymentMethod, fare, baseFare, waitingChargeAmount, timeChargeAmount, distanceChargeAmount, additionalCharge, driverPaymentCollection, otp }) => {
   const config = rideStatusConfig[nextStatus];
 
   if (!config) {
@@ -1801,6 +1831,62 @@ export const updateRideLifecycle = async ({ rideId, driverId, nextStatus, paymen
 
   if (!config.allowedCurrent.includes(ride.liveStatus)) {
     throw new ApiError(409, `Ride cannot move from ${ride.liveStatus} to ${nextStatus}`);
+  }
+
+  // Task 7: Verify OTP on ride start
+  if (nextStatus === RIDE_LIVE_STATUS.STARTED) {
+    if (ride.isPoolRide) {
+      if (!otp) {
+        throw new ApiError(400, 'OTP is required to start a pooled ride');
+      }
+      if (String(ride.otp) !== String(otp)) {
+        throw new ApiError(400, 'Invalid OTP code');
+      }
+    }
+  }
+
+  // Task 2: Intercept complete status for pooling
+  if (nextStatus === RIDE_LIVE_STATUS.COMPLETED && ride.isPoolRide) {
+    const { completePassengerRide } = await import('./instantPoolingService.js');
+    await completePassengerRide(ride._id);
+    return populateRideRealtime(ride._id);
+  }
+
+  // Task 2: Update sequence on ride start
+  if (nextStatus === RIDE_LIVE_STATUS.STARTED && ride.isPoolRide && ride.poolGroupId) {
+    const { InstantPoolGroup } = await import('../admin/models/InstantPoolGroup.js');
+    const group = await InstantPoolGroup.findById(ride.poolGroupId);
+    if (group) {
+      group.routeSequence = group.routeSequence.map(stop => {
+        if (String(stop.rideId) === String(ride._id) && stop.type === 'pickup') {
+          return { ...stop, status: 'completed' };
+        }
+        return stop;
+      });
+      group.routeVersion += 1;
+      await group.save();
+
+      // Re-optimize route sequence based on current coordinates of driver
+      const { findOptimalRouteSequence } = await import('./routeOptimizer.js');
+      const { getInstantPoolingSettings } = await import('./transportSettingsService.js');
+      const { Driver } = await import('../driver/models/Driver.js');
+      const driver = await Driver.findById(driverId);
+      const settings = await getInstantPoolingSettings();
+      const remainingRides = await Ride.find({ _id: { $in: group.activeRides } }).populate('userId', 'name');
+
+      group.routeSequence = findOptimalRouteSequence(
+        driver.location.coordinates,
+        remainingRides,
+        {
+          maxDetourMeters: Number(settings.max_detour_meters || 5000),
+          maxEtaIncreaseMinutes: Number(settings.max_eta_increase_minutes || 15),
+        }
+      );
+      await group.save();
+
+      const { broadcastPoolUpdate } = await import('./instantPoolingService.js');
+      broadcastPoolUpdate(group);
+    }
   }
 
   ride.liveStatus = nextStatus;
@@ -1940,6 +2026,12 @@ export const updateRideLifecycle = async ({ rideId, driverId, nextStatus, paymen
 
   const populatedRide = await populateRideRealtime(ride._id);
   populatedRide.$locals.walletUpdate = walletUpdate;
+
+  if (nextStatus === RIDE_LIVE_STATUS.COMPLETED) {
+    // Trigger invoice email and WhatsApp asynchronously
+    sendTaxiInvoiceEmail(populatedRide, populatedRide.userId).catch(err => logger.error('Error triggering taxi invoice email', err));
+    sendTaxiInvoiceWhatsApp(populatedRide, populatedRide.userId).catch(err => logger.error('Error triggering taxi invoice WhatsApp', err));
+  }
 
   return populatedRide;
 };

@@ -248,6 +248,8 @@ const PoolingManager = ({ mode: propMode }) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [formData, setFormData] = useState(buildDefaultForm);
 
+  console.log('PoolingManager Render:', { loading, isSaving, errorMessage, validationErrors, formData });
+
   useEffect(() => {
     let mounted = true;
 
@@ -470,7 +472,7 @@ const PoolingManager = ({ mode: propMode }) => {
   const validateStops = (items = [], field) => {
     const errors = {};
     const filledItems = items.filter((item) =>
-      item.name.trim() || item.address.trim() || item.landmark.trim() || Number(item.etaMinutes || 0) > 0,
+      (item.name || '').trim() || (item.address || '').trim() || (item.landmark || '').trim() || Number(item.etaMinutes || 0) > 0,
     );
 
     if (filledItems.length === 0) {
@@ -479,9 +481,9 @@ const PoolingManager = ({ mode: propMode }) => {
     }
 
     filledItems.forEach((item) => {
-      if (!item.name.trim()) {
+      if (!(item.name || '').trim()) {
         errors[`${item.id}.name`] = 'Point name is required.';
-      } else if (!item.address.trim()) {
+      } else if (!(item.address || '').trim()) {
         errors[`${item.id}.address`] = 'Address is required.';
       } else if (Number(item.etaMinutes || 0) < 0) {
         errors[`${item.id}.etaMinutes`] = 'ETA cannot be negative.';
@@ -493,11 +495,11 @@ const PoolingManager = ({ mode: propMode }) => {
 
   const validateForm = () => {
     const errors = {};
-    const filledSchedules = formData.schedules.filter((item) => item.label.trim() || item.departureTime || item.arrivalTime);
+    const filledSchedules = formData.schedules.filter((item) => (item.label || '').trim() || item.departureTime || item.arrivalTime);
 
-    if (!formData.routeName.trim()) errors.routeName = 'Route name is required.';
-    if (!formData.originLabel.trim()) errors.originLabel = 'Origin location is required.';
-    if (!formData.destinationLabel.trim()) errors.destinationLabel = 'Destination is required.';
+    if (!(formData.routeName || '').trim()) errors.routeName = 'Route name is required.';
+    if (!(formData.originLabel || '').trim()) errors.originLabel = 'Origin location is required.';
+    if (!(formData.destinationLabel || '').trim()) errors.destinationLabel = 'Destination is required.';
     if (formData.assignedVehicleTypeIds.length === 0) errors.assignedVehicleTypeIds = 'Select at least one pooling-enabled vehicle.';
     if (Number(formData.farePerSeat || 0) <= 0) errors.farePerSeat = 'Fare per seat must be greater than zero.';
     if (Number(formData.maxSeatsPerBooking || 0) <= 0) errors.maxSeatsPerBooking = 'Max seats per booking must be at least 1.';
@@ -512,7 +514,7 @@ const PoolingManager = ({ mode: propMode }) => {
       errors.schedules = 'Add at least one schedule.';
     } else {
       filledSchedules.forEach((schedule) => {
-        if (!schedule.label.trim()) errors[`${schedule.id}.label`] = 'Schedule label is required.';
+        if (!(schedule.label || '').trim()) errors[`${schedule.id}.label`] = 'Schedule label is required.';
         if (!schedule.departureTime) errors[`${schedule.id}.departureTime`] = 'Departure time is required.';
         if (!schedule.arrivalTime) errors[`${schedule.id}.arrivalTime`] = 'Arrival time is required.';
         if (!Array.isArray(schedule.activeDays) || schedule.activeDays.length === 0) errors[`${schedule.id}.activeDays`] = 'Select at least one active day.';
@@ -525,40 +527,46 @@ const PoolingManager = ({ mode: propMode }) => {
   const handleSave = async () => {
     setIsSaving(true);
     setErrorMessage('');
-    const nextValidationErrors = validateForm();
-    setValidationErrors(nextValidationErrors);
 
     try {
+      const nextValidationErrors = validateForm();
+      setValidationErrors(nextValidationErrors);
+
       if (Object.keys(nextValidationErrors).length > 0) {
-        throw new Error('Please fix the highlighted pooling route fields.');
+        const errorMsgs = Object.values(nextValidationErrors);
+        setErrorMessage(`Validation failed: ${errorMsgs.join(', ')}`);
+        errorMsgs.forEach((msg) => {
+          toast.error(msg);
+        });
+        return;
       }
 
       const payload = {
         ...formData,
         pickupPoints: formData.pickupPoints
           .map((item, index) => ({ ...item, sequence: index + 1, stopType: 'pickup' }))
-          .filter((item) => item.name.trim() || item.address.trim()),
+          .filter((item) => (item.name || '').trim() || (item.address || '').trim()),
         dropPoints: formData.dropPoints
           .map((item, index) => ({ ...item, sequence: index + 1, stopType: 'drop' }))
-          .filter((item) => item.name.trim() || item.address.trim()),
+          .filter((item) => (item.name || '').trim() || (item.address || '').trim()),
         stops: formData.stops
           .map((item, index) => ({ ...item, sequence: index + 1 }))
-          .filter((item) => item.name.trim() || item.address.trim()),
+          .filter((item) => (item.name || '').trim() || (item.address || '').trim()),
         schedules: formData.schedules.filter(
-          (item) => item.label.trim() || item.departureTime || item.arrivalTime,
+          (item) => (item.label || '').trim() || item.departureTime || item.arrivalTime,
         ),
         status: formData.active ? formData.status : 'draft',
       };
 
-      if (!payload.routeName.trim()) {
+      if (!(payload.routeName || '').trim()) {
         throw new Error('Pooling route name is required');
       }
 
-      if (!payload.originLabel.trim()) {
+      if (!(payload.originLabel || '').trim()) {
         throw new Error('Origin location is required');
       }
 
-      if (!payload.destinationLabel.trim()) {
+      if (!(payload.destinationLabel || '').trim()) {
         throw new Error('Destination location is required');
       }
 
@@ -575,7 +583,9 @@ const PoolingManager = ({ mode: propMode }) => {
       toast.success(id ? 'Pooling route updated' : 'Pooling route created');
       navigate('/taxi/admin/pooling/routes');
     } catch (error) {
-      setErrorMessage(error?.response?.data?.message || error.message || 'Could not save pooling route.');
+      const msg = error?.response?.data?.message || error.message || 'Could not save pooling route.';
+      setErrorMessage(msg);
+      toast.error(msg);
     } finally {
       setIsSaving(false);
     }
@@ -1243,11 +1253,6 @@ const PoolingManager = ({ mode: propMode }) => {
                   Decide whether this pooling route is active right away or should stay in draft while the route plan is still being prepared.
                 </p>
               </div>
-
-              <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                This page uses only rental vehicles with pooling enabled, so the saved blueprint layout stays consistent between rental setup and car pooling operations.
-              </div>
-
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                   <input

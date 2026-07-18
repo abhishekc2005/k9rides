@@ -115,19 +115,17 @@ export function emitDeliveryDropOtpToUser(order, plainOtp) {
 }
 
 export async function notifyOwnersSafely(targets, payload) {
-  try {
-    await sendNotificationToOwners(targets, payload);
-  } catch (error) {
+  // Run in the background so it does not block the API thread
+  sendNotificationToOwners(targets, payload).catch((error) => {
     logger.warn(`FCM notification failed: ${error?.message || error}`);
-  }
+  });
 }
 
 export async function notifyOwnerSafely(target, payload) {
-  try {
-    await sendNotificationToOwner({ ...target, payload });
-  } catch (error) {
+  // Run in the background so it does not block the API thread
+  sendNotificationToOwner({ ...target, payload }).catch((error) => {
     logger.warn(`FCM notification failed: ${error?.message || error}`);
-  }
+  });
 }
 
 export function buildOrderIdentityFilter(orderIdOrMongoId) {

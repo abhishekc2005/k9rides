@@ -29,6 +29,8 @@ import {
   sanitizeOrderForExternal,
   isStatusAdvance,
 } from './order.helpers.js';
+import { sendFoodInvoiceEmail } from '../../../../services/email.service.js';
+import { sendFoodInvoiceWhatsApp } from '../../../../services/whatsapp.service.js';
 
 function emitOrderUpdate(order, deliveryPartnerId) {
   try {
@@ -731,7 +733,7 @@ export async function verifyDropOtpDelivery(orderId, deliveryPartnerId, otp) {
 
 export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   const identity = buildOrderIdentityFilter(orderId);
-  const order = await FoodOrder.findOne(identity).select('+deliveryOtp');
+  const order = await FoodOrder.findOne(identity).select('+deliveryOtp').populate('userId', 'name email');
   if (!order) throw new NotFoundError('Order not found');
   if (
     order.dispatch?.deliveryPartnerId?.toString() !== deliveryPartnerId.toString()
@@ -834,6 +836,11 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
     prevPayStatus,
     paymentStatus: order.payment?.status,
   });
+
+  // Trigger invoice email and WhatsApp asynchronously
+  sendFoodInvoiceEmail(order, order.userId).catch(err => logger.error('Error triggering food invoice email', err));
+  sendFoodInvoiceWhatsApp(order, order.userId).catch(err => logger.error('Error triggering food invoice WhatsApp', err));
+
   return sanitizeOrderForExternal(order);
 }
 

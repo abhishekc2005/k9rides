@@ -329,7 +329,7 @@ const ManageOwners = () => {
                           <td className="px-4 py-4 text-sm text-gray-500">{formatMobile(owner.mobile)}</td>
                           <td className="px-4 py-4">
                             <button
-                              onClick={() => navigate(`/taxi/admin/owners/${owner._id}/documents`)}
+                              onClick={() => navigate(`/taxi/admin/owners/${owner._id}`, { state: { defaultTab: 'Documents' } })}
                               className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                             >
                               <FileText size={16} />

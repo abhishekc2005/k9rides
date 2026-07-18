@@ -9,7 +9,7 @@ const getServiceAction = (serviceType, navigate) => {
     case 'outstation': return () => navigate('/taxi/user/ride/select-location?rideType=outstation');
     // case 'rental': return () => navigate('/taxi/user/rental/select'); // rental commented out as per previous request
     case 'bid': return () => navigate('/taxi/user/ride/select-location?rideType=bid');
-    case 'pooling': return () => navigate('/taxi/user/ride/select-location?rideType=pooling');
+    case 'pooling': return () => navigate('/taxi/user/pooling');
     default: return () => navigate('/taxi/user/ride/select-location');
   }
 };

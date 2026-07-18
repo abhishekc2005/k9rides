@@ -24,16 +24,17 @@ const ROLES = {
   ADMIN: "ADMIN",
 };
 
+const isDev = config.nodeEnv !== 'production';
 const DEFAULT_CREDENTIALS = {
-  adminEmail: String(process.env.DEFAULT_ADMIN_EMAIL || "K9 Ridesindia@gmail.com")
+  adminEmail: String(process.env.DEFAULT_ADMIN_EMAIL || (isDev ? "K9 Ridesindia@gmail.com" : ""))
     .trim()
     .toLowerCase(),
   adminPassword: String(
-    process.env.DEFAULT_ADMIN_PASSWORD || "sahin.K9 Rides@2004#",
+    process.env.DEFAULT_ADMIN_PASSWORD || (isDev ? "sahin.K9 Rides@2004#" : ""),
   ),
-  userPhone: String(process.env.DEFAULT_USER_PHONE || "7974161582"),
-  restaurantPhone: String(process.env.DEFAULT_RESTAURANT_PHONE || "7974161582"),
-  deliveryPhone: String(process.env.DEFAULT_DELIVERY_PHONE || "7610416911"),
+  userPhone: String(process.env.DEFAULT_USER_PHONE || (isDev ? "7974161582" : "")),
+  restaurantPhone: String(process.env.DEFAULT_RESTAURANT_PHONE || (isDev ? "7974161582" : "")),
+  deliveryPhone: String(process.env.DEFAULT_DELIVERY_PHONE || (isDev ? "7610416911" : "")),
 };
 
 const normalizePhone10 = (value) => String(value || "").replace(/\D/g, "").slice(-10);

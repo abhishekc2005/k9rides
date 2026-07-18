@@ -2,6 +2,7 @@ import { PoolingVehicle } from '../models/PoolingVehicle.js';
 import { PoolingBooking } from '../models/PoolingBooking.js';
 import { PoolingRoute } from '../models/PoolingRoute.js';
 import { PoolingSeatReservation } from '../models/PoolingSeatReservation.js';
+import { User } from '../../user/models/User.js';
 import { ApiError } from '../../../../utils/ApiError.js';
 import { asyncHandler } from '../../../../utils/asyncHandler.js';
 import { uploadDataUrlToCloudinary } from '../../../../utils/cloudinaryUpload.js';

@@ -40,6 +40,7 @@ const Signup = () => {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [otpSending, setOtpSending] = useState(false);
   const navigate = useNavigate();
   const appName = settings.general?.app_name || 'App';
@@ -112,8 +113,20 @@ const Signup = () => {
 
   const handleStartSignup = async (e) => {
     e.preventDefault();
-    if (!isValidPhone) return;
 
+    const nextErrors = {};
+    if (!formData.phone.trim()) {
+      nextErrors.phone = 'Mobile number is required';
+    } else if (!/^\d{10}$/.test(formData.phone.trim())) {
+      nextErrors.phone = 'Enter valid 10-digit number';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    setErrors({});
     setOtpSending(true);
     setError('');
 
@@ -136,8 +149,26 @@ const Signup = () => {
 
   const handleSignup = async (e, overrides = {}) => {
     e.preventDefault();
-    if (!formData.name || !isValidPhone) return;
 
+    const nextErrors = {};
+    if (!formData.name.trim()) {
+      nextErrors.name = 'Full name is required';
+    }
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      nextErrors.email = 'Enter a valid email address';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      const firstErrorField = Object.keys(nextErrors)[0];
+      const element = document.getElementById(`field-${firstErrorField}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    setErrors({});
     setLoading(true);
     setError('');
 
@@ -185,13 +216,18 @@ const Signup = () => {
       return;
     }
 
-    setFormData((prev) => ({ ...prev, profileImage: '' }));
-    setPhotoError('');
-
+    // Bypass normal validation by forcing default name & email
     const fakeEvent = {
       preventDefault() {},
     };
 
+    setFormData((prev) => ({
+      ...prev,
+      name: prev.name.trim() || 'Passenger',
+      profileImage: '',
+    }));
+
+    setPhotoError('');
     await handleSignup(fakeEvent, { profileImage: '' });
   };
 
@@ -206,10 +242,10 @@ const Signup = () => {
     >
       {step === 'phone' ? (
         <form onSubmit={handleStartSignup} className="space-y-6">
-          <div className="space-y-2">
+          <div className="space-y-2" id="field-phone-step">
             <label className="text-xs font-bold text-gray-700 uppercase tracking-wider ml-1">Mobile Number *</label>
-            <div className={fieldShellClassName}>
-              <Smartphone size={20} className="text-gray-400 group-focus-within:text-[#F38F24] transition-colors" />
+            <div className={`${fieldShellClassName} ${errors.phone ? 'border-rose-500 bg-rose-50/20' : ''}`}>
+              <Smartphone size={20} className={errors.phone ? 'text-rose-500' : 'text-gray-400 group-focus-within:text-[#F38F24] transition-colors'} />
               <span className="text-[16px] font-bold text-[#1A1A1A] border-r border-gray-200 pr-3">+91</span>
               <input
                 type="tel"
@@ -217,10 +253,13 @@ const Signup = () => {
                 placeholder="00000 00000"
                 className={fieldInputClassName}
                 value={formData.phone}
-                onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value.replace(/\D/g, '') }))}
-                required
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, phone: e.target.value.replace(/\D/g, '') }));
+                  if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
+                }}
               />
             </div>
+            {errors.phone && <p className="ml-1 text-[11px] font-bold text-rose-600">{errors.phone}</p>}
             <p className="ml-1 text-sm text-gray-500">We'll send a 4-digit OTP to this number.</p>
           </div>
 
@@ -231,9 +270,9 @@ const Signup = () => {
           <motion.button
             whileTap={{ scale: 0.98 }}
             type="submit"
-            disabled={!isValidPhone || otpSending}
+            disabled={otpSending}
             className={`w-full py-4 rounded-xl text-base font-bold transition-all flex items-center justify-center gap-3 ${
-              isValidPhone && !otpSending
+              !otpSending
                 ? 'bg-[#1A1A1A] text-white hover:bg-black hover:shadow-lg'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
@@ -348,33 +387,41 @@ const Signup = () => {
             <p className="ml-1 text-xs font-medium text-gray-400">Verified number. You can't edit it here.</p>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2" id="field-name">
             <label className="ml-1 text-xs font-bold uppercase tracking-wider text-gray-700">Full Name *</label>
-            <div className={fieldShellClassName}>
-              <User size={20} className="text-gray-400 group-focus-within:text-[#F38F24] transition-colors" />
+            <div className={`${fieldShellClassName} ${errors.name ? 'border-rose-500 bg-rose-50/20' : ''}`}>
+              <User size={20} className={errors.name ? 'text-rose-500' : 'text-gray-400 group-focus-within:text-[#F38F24] transition-colors'} />
               <input 
                 type="text" 
                 placeholder="Enter your name"
                 className={fieldInputClassName}
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+                }}
                 required
               />
             </div>
+            {errors.name && <p className="ml-1 text-[11px] font-bold text-rose-600">{errors.name}</p>}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2" id="field-email">
             <label className="ml-1 text-xs font-bold uppercase tracking-wider text-gray-700">Email Address (Optional)</label>
-            <div className={fieldShellClassName}>
-              <Mail size={20} className="text-gray-400 group-focus-within:text-[#F38F24] transition-colors" />
+            <div className={`${fieldShellClassName} ${errors.email ? 'border-rose-500 bg-rose-50/20' : ''}`}>
+              <Mail size={20} className={errors.email ? 'text-rose-500' : 'text-gray-400 group-focus-within:text-[#F38F24] transition-colors'} />
               <input 
                 type="email" 
                 placeholder="Enter email address"
                 className={fieldInputClassName}
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value });
+                  if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+                }}
               />
             </div>
+            {errors.email && <p className="ml-1 text-[11px] font-bold text-rose-600">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">
@@ -424,9 +471,9 @@ const Signup = () => {
           <motion.button 
             whileTap={{ scale: 0.98 }}
             type="submit"
-            disabled={!formData.name || !isValidPhone || loading || photoUploading}
+            disabled={loading || photoUploading}
             className={`w-full py-4 rounded-xl text-base font-bold transition-all flex items-center justify-center gap-2 ${
-              formData.name && isValidPhone && !loading && !photoUploading
+              !loading && !photoUploading
               ? 'bg-[#1A1A1A] text-white hover:bg-black hover:shadow-lg' 
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}

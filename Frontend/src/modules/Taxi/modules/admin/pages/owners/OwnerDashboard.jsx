@@ -11,11 +11,12 @@ import {
   FileText, 
   TrendingUp,
   ChevronRight,
-  Monitor
+  Monitor,
+  AlertTriangle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AdminPageHeader from '../../components/ui/AdminPageHeader';
-import { getUnifiedAdminToken } from '../../services/adminSession';
+import { adminService } from '../../services/adminService';
 
 const StatCard = ({ icon: Icon, label, value, color, onViewAll }) => (
   <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
@@ -59,22 +60,17 @@ const OwnerDashboard = () => {
     const fetchDashboard = async () => {
       try {
         setIsLoading(true);
-        const token = getUnifiedAdminToken();
+        setError(null);
+        const resData = await adminService.getOwnerDashboard();
         
-        const response = await fetch(globalThis.__LEGACY_BACKEND_ORIGIN__ + '/api/v1/taxi/admin/owner-management/dashboard', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        const resData = await response.json();
-        if (response.ok && resData.success) {
-          setData(resData.data);
+        if (resData && resData.success) {
+          setData(resData.data || resData);
         } else {
-          setError(resData.message || 'Failed to fetch dashboard');
+          setError(resData?.message || 'Failed to fetch dashboard');
         }
       } catch (err) {
-        setError('Network error');
+        const errMsg = err.response?.data?.message || err.response?.data?.error || err.message;
+        setError(errMsg || 'Network error');
       } finally {
         setIsLoading(false);
       }
@@ -87,6 +83,24 @@ const OwnerDashboard = () => {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <div className="w-10 h-10 border-4 border-gray-100 border-t-indigo-600 rounded-full animate-spin"></div>
         <p className="text-[12px] font-black text-gray-400 uppercase tracking-widest leading-none">Fetching Owner Insights...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 p-6 text-center">
+        <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+          <AlertTriangle size={24} />
+        </div>
+        <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Dashboard Error</h3>
+        <p className="text-xs font-semibold text-rose-600 max-w-xs">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95"
+        >
+          Retry Connection
+        </button>
       </div>
     );
   }

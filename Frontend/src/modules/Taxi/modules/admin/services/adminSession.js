@@ -35,9 +35,15 @@ const isTokenExpired = (token) => {
 
 export const normalizeAdminProfile = (profile = {}) => {
   const source = profile && typeof profile === 'object' ? profile : {};
-  const adminType = String(source.admin_type || source.role || 'superadmin').toLowerCase() === 'subadmin'
-    ? 'subadmin'
-    : 'superadmin';
+  
+  const isSuper = 
+    source.adminLevel === 'platform_superadmin' || 
+    source.adminLevel === 'food_superadmin' || 
+    source.adminLevel === 'taxi_superadmin' || 
+    String(source.admin_type || source.role || '').toLowerCase() === 'superadmin' ||
+    (!source.parentAdminId && (source.role === 'ADMIN' || source.role === 'superadmin' || !source.admin_type));
+
+  const adminType = isSuper ? 'superadmin' : 'subadmin';
 
   const permissions = Array.isArray(source.permissions)
     ? [...new Set(source.permissions.map((item) => String(item || '').trim()).filter(Boolean))]

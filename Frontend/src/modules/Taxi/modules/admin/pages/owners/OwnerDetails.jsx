@@ -14,7 +14,7 @@ import {
   Menu,
   Phone,
 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
 import { adminService } from '../../services/adminService';
 import AdminPageHeader from '../../components/ui/AdminPageHeader';
@@ -73,7 +73,8 @@ const StatCard = ({ label, value, tone = 'teal' }) => {
 const OwnerDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Owner Profile');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'Owner Profile');
   const [owner, setOwner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');

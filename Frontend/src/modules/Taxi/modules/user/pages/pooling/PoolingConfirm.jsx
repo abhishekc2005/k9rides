@@ -90,6 +90,8 @@ const PoolingConfirm = () => {
   const [isBooking, setIsBooking] = useState(false);
   const [isBooked, setIsBooked] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
+  const [showMockQr, setShowMockQr] = useState(false);
+  const [mockQrOrder, setMockQrOrder] = useState(null);
 
   useEffect(() => {
     if (!confirmedBooking) {
@@ -132,15 +134,43 @@ const PoolingConfirm = () => {
     );
   }
 
+  const handleVerifyMockPayment = async () => {
+    if (!mockQrOrder) return;
+    setIsBooking(true);
+    setShowMockQr(false);
+
+    try {
+      const verifyResponse = await userService.verifyPoolingBookingPayment({
+        razorpay_order_id: mockQrOrder.orderId,
+        razorpay_payment_id: `pay_mock_${Date.now().toString(36)}`,
+        razorpay_signature: 'mock_signature_bypass',
+        routeId: route._id,
+        vehicleId: vehicle._id,
+        scheduleId: schedule.id,
+        travelDate,
+        selectedSeats,
+        pickupStopId: pickupStop.id,
+        dropStopId: dropStop.id,
+      });
+      const booking = unwrapPayload(verifyResponse);
+
+      setConfirmedBooking(booking);
+      setIsBooked(true);
+      toast.success('Pooling booking confirmed');
+    } catch (verifyError) {
+      const message =
+        verifyError?.response?.data?.message ||
+        verifyError?.message ||
+        'Mock payment verification failed';
+      toast.error(message);
+      setIsBooking(false);
+    }
+  };
+
   const handleConfirm = async () => {
     setIsBooking(true);
 
     try {
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) {
-        throw new Error('Razorpay SDK failed to load');
-      }
-
       const orderResponse = await userService.createPoolingBookingOrder({
         routeId: route._id,
         vehicleId: vehicle._id,
@@ -154,6 +184,18 @@ const PoolingConfirm = () => {
 
       if (!order.keyId || !order.orderId) {
         throw new Error('Unable to start pooling payment');
+      }
+
+      // Check if this is a Mock Order returned by the backend auth-error fallback
+      if (order.orderId.startsWith('mock_order_')) {
+        setMockQrOrder(order);
+        setShowMockQr(true);
+        return;
+      }
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Razorpay SDK failed to load');
       }
 
       const rzp = new window.Razorpay({
@@ -431,9 +473,22 @@ const PoolingConfirm = () => {
                     <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-indigo-600/20 blur-3xl" />
                     
                     <div className="relative z-10 flex items-center justify-between">
-                      <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-md border border-white/5">
-                        <ShieldCheck size={12} className="text-indigo-400" />
-                        Verified Ride
+                      <div className="flex items-center gap-2">
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-md border border-white/5">
+                          <ShieldCheck size={12} className="text-indigo-400" />
+                          Verified Ride
+                        </div>
+                        {route?.poolingRules?.allowInstantBooking ? (
+                          <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400 backdrop-blur-md">
+                            <Zap size={10} className="text-emerald-400" fill="currentColor" />
+                            Instant
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-amber-400 backdrop-blur-md">
+                            <Clock size={10} className="text-amber-400" />
+                            Request
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-col items-end">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Seats</p>
@@ -535,14 +590,26 @@ const PoolingConfirm = () => {
               >
                 <div className="mb-8 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 shadow-sm">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-650 shadow-sm">
                       <Ticket size={18} />
                     </div>
                     <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Price Details</h3>
                   </div>
-                  <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                    <Zap size={12} fill="currentColor" />
-                    Best Deal
+                  <div className="flex items-center gap-2">
+                    {route?.poolingRules?.allowInstantBooking ? (
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                        <Zap size={12} fill="currentColor" />
+                        Instant Booking
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-amber-600">
+                        <Clock size={12} />
+                        Request Booking
+                      </div>
+                    )}
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                      Best Deal
+                    </div>
                   </div>
                 </div>
 
@@ -635,6 +702,67 @@ const PoolingConfirm = () => {
           </>
         )}
       </AnimatePresence>
+
+      {/* Mock UPI QR Code Modal */}
+      {showMockQr && mockQrOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[32px] bg-white p-6 shadow-2xl border border-slate-100 space-y-6 text-center animate-in fade-in zoom-in duration-200">
+            <div className="mx-auto w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-650">
+              <span className="text-xl font-bold">QR</span>
+            </div>
+            
+            <div className="space-y-1">
+              <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Scan & Pay (Test Mode)</h3>
+              <p className="text-xs font-semibold text-slate-500">Scan this UPI QR code to complete booking</p>
+            </div>
+
+            {/* UPI QR Code Image */}
+            <div className="mx-auto w-48 h-48 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center overflow-hidden p-2">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`upi://pay?pa=test@upi&pn=K9Rides&am=${mockQrOrder.amount / 100}&tn=PoolingBooking_${mockQrOrder.orderId}`)}`}
+                alt="UPI Payment QR Code" 
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* Amount details */}
+            <div className="bg-slate-50 rounded-2xl p-4 space-y-1">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payable Amount</p>
+              <p className="text-2xl font-black text-slate-900">₹{mockQrOrder.amount / 100}</p>
+            </div>
+
+            <p className="text-[11px] font-semibold text-slate-500 leading-relaxed px-2">
+              This is a development fallback payment mode. Click below to simulate success.
+            </p>
+
+            <div className="space-y-2 pt-2">
+              <a
+                href={`upi://pay?pa=test@upi&pn=K9Rides&am=${mockQrOrder.amount / 100}&tn=PoolingBooking_${mockQrOrder.orderId}`}
+                className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                Pay via UPI App Directly
+              </a>
+              <button
+                type="button"
+                onClick={handleVerifyMockPayment}
+                className="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-black text-white text-sm font-bold shadow-md transition-all"
+              >
+                Confirm Payment Success
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMockQr(false);
+                  setIsBooking(false);
+                }}
+                className="w-full py-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-bold transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes shimmer {

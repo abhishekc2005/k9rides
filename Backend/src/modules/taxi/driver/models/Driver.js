@@ -148,6 +148,30 @@ const driverSchema = new mongoose.Schema(
       default: 'taxi',
       trim: true,
     },
+    isPoolEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    activePoolGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TaxiInstantPoolGroup',
+      default: null,
+    },
+    poolOccupiedSeats: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    maxPoolSeats: {
+      type: Number,
+      default: 4,
+      min: 1,
+    },
+    activePoolRideCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     serviceCategories: {
       type: [String],
       default: [],
@@ -416,6 +440,7 @@ driverSchema.index({ approve: 1, deletedAt: 1, createdAt: -1 });
 driverSchema.index({ status: 1, deletedAt: 1 });
 driverSchema.index({ phone: 1, deletedAt: 1 });
 
+driverSchema.index({ isOnline: 1, isOnRide: 1, isPoolEnabled: 1 });
 driverSchema.index({ location: '2dsphere' });
 driverSchema.index({ 'routeBooking.anchorLocation': '2dsphere' });
 

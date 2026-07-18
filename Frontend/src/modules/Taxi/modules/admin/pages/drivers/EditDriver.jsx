@@ -23,6 +23,7 @@ const serviceCategoryOptions = [
   { value: 'taxi', label: 'Taxi' },
   { value: 'outstation', label: 'Outstation' },
   { value: 'delivery', label: 'Delivery' },
+  { value: 'pooling', label: 'Pooling' },
 ];
 
 const normalizeTransportTypeForSelect = (value, options = []) => {
@@ -560,7 +561,6 @@ const EditDriver = () => {
                 >
                   <option value="">Select Transport Type</option>
                   {transportTypes
-                    .filter(t => String(t.name || '').toLowerCase() !== 'pooling')
                     .map(t => (
                       <option key={t.id || t._id} value={t.name}>{t.display_name}</option>
                   ))}

@@ -141,6 +141,7 @@ export const adminService = {
   createOwnerBooking: (data) => api.post('/admin/owner-management/bookings', data),
   updateOwnerBooking: (id, data) => api.patch(`/admin/owner-management/bookings/${id}`, data),
   deleteOwnerBooking: (id) => api.delete(`/admin/owner-management/bookings/${id}`),
+  getOwnerDashboard: () => api.get('/admin/owner-management/dashboard'),
 
   /**
    * Reports Management

@@ -9,7 +9,7 @@ const poolingBookingSchema = new mongoose.Schema(
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'TaxiUser',
       required: true,
     },
     route: {
@@ -54,6 +54,17 @@ const poolingBookingSchema = new mongoose.Schema(
       max: 100,
     },
     serviceTaxAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    adminCommissionPercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    adminCommissionAmount: {
       type: Number,
       default: 0,
       min: 0,

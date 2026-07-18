@@ -51,12 +51,15 @@ export function createRazorpayOrder(amountPaise, currency = 'INR', receipt = '')
             logger.error(`[Razorpay] Order Creation Failed: ${errMsg}`);
             
             if (errMsg.includes('Authentication failed') || errMsg.includes('invalid api key')) {
-                logger.warn(`[Razorpay] Generating fallback Mock Order due to Authentication failed`);
-                return {
-                    id: `mock_order_${Date.now()}`,
-                    amount: Math.round(amountPaise),
-                    currency
-                };
+                const isMockAllowed = config.nodeEnv !== 'production' || config.useDefaultOtp;
+                if (isMockAllowed) {
+                    logger.warn(`[Razorpay] Generating fallback Mock Order due to Authentication failed`);
+                    return {
+                        id: `mock_order_${Date.now()}`,
+                        amount: Math.round(amountPaise),
+                        currency
+                    };
+                }
             }
             throw new Error(errMsg);
         });
@@ -110,20 +113,24 @@ export function createPaymentLink({ amountPaise, currency = 'INR', description, 
             logger.error(`[Razorpay] Payment Link Failed for Order ${orderId}: ${errMsg}`);
             
             if (errMsg.includes('Authentication failed') || errMsg.includes('invalid api key')) {
-                logger.warn(`[Razorpay] Falling back to standard UPI URI due to Authentication failed`);
-                return {
-                    id: `mock_plink_${Date.now()}`,
-                    short_url: `upi://pay?pa=k9rides@ybl&pn=K9Rides&am=${(amountPaise / 100).toFixed(2)}&tr=${orderId}`,
-                    status: 'created',
-                    expire_by: Math.floor(Date.now() / 1000) + 86400
-                };
+                const isMockAllowed = config.nodeEnv !== 'production' || config.useDefaultOtp;
+                if (isMockAllowed) {
+                    logger.warn(`[Razorpay] Falling back to standard UPI URI due to Authentication failed`);
+                    return {
+                        id: `mock_plink_${Date.now()}`,
+                        short_url: `upi://pay?pa=k9rides@ybl&pn=K9Rides&am=${(amountPaise / 100).toFixed(2)}&tr=${orderId}`,
+                        status: 'created',
+                        expire_by: Math.floor(Date.now() / 1000) + 86400
+                    };
+                }
             }
             throw new Error(errMsg);
         });
 }
 
 export function verifyPaymentSignature(orderId, paymentId, signature) {
-    if (signature === 'mock_signature_bypass' && String(orderId || '').startsWith('mock_order_')) {
+    const isMockAllowed = config.nodeEnv !== 'production' || config.useDefaultOtp;
+    if (isMockAllowed && signature === 'mock_signature_bypass' && String(orderId || '').startsWith('mock_order_')) {
         return true;
     }
     if (!KEY_SECRET) return false;
@@ -170,6 +177,16 @@ export function fetchRazorpayPaymentLink(paymentLinkId) {
  * @param {number} amount - Amount to refund (in major unit, e.g., INR 123.45)
  */
 export async function initiateRazorpayRefund(paymentId, amount) {
+    const isMockAllowed = config.nodeEnv !== 'production' || config.useDefaultOtp;
+    if (isMockAllowed && (!paymentId || String(paymentId).startsWith('mock_'))) {
+        logger.info(`[Razorpay] Mock Refund triggered for payment ID: ${paymentId}`);
+        return {
+            success: true,
+            refundId: `mock_ref_${Date.now()}`,
+            status: 'processed',
+            raw: { id: `mock_ref_${Date.now()}`, status: 'processed' }
+        };
+    }
     if (!isRazorpayConfigured()) {
         throw new Error('Razorpay is not configured on this server');
     }

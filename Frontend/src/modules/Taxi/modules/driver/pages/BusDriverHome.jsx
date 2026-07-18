@@ -255,6 +255,7 @@ const BusDriverHome = () => {
   const [isSavingSchedules, setIsSavingSchedules] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isRunDetailsOpen, setIsRunDetailsOpen] = useState(false);
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [passenger, setPassenger] = useState({
     name: '',
     age: '',
@@ -264,16 +265,18 @@ const BusDriverHome = () => {
     notes: '',
   });
 
-  const confirmLogout = useCallback(() => {
-    const shouldLogout = window.confirm('Do you want to log out and leave the bus driver console?');
-    if (!shouldLogout) {
-      return false;
-    }
-
-    clearDriverAuthState();
+  const handleLogoutConfirm = useCallback(() => {
+    setIsLogoutOpen(false);
     navigate('/taxi/driver/login', { replace: true });
-    return true;
+    setTimeout(() => {
+      clearDriverAuthState();
+    }, 50);
   }, [navigate]);
+
+  const confirmLogout = useCallback(() => {
+    setIsLogoutOpen(true);
+    return true;
+  }, []);
 
   const busService = profile?.busService || null;
   const schedules = Array.isArray(busService?.schedules) ? busService.schedules : [];
@@ -318,6 +321,7 @@ const BusDriverHome = () => {
         }
       } catch (error) {
         if (!active) return;
+        if (!getLocalDriverToken()) return;
         toast.error(error?.message || 'Unable to load bus driver profile');
       } finally {
         if (active) {
@@ -352,17 +356,15 @@ const BusDriverHome = () => {
     window.history.pushState({ busDriverHome: true }, '', window.location.href);
 
     const handlePopState = () => {
-      const loggedOut = confirmLogout();
-      if (!loggedOut) {
-        window.history.pushState({ busDriverHome: true }, '', window.location.href);
-      }
+      setIsLogoutOpen(true);
+      window.history.pushState({ busDriverHome: true }, '', window.location.href);
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [confirmLogout]);
+  }, []);
 
   useEffect(() => {
     if (!schedules.length) {
@@ -1806,6 +1808,33 @@ const BusDriverHome = () => {
         onChangeTab={setActiveTab}
         onLogout={confirmLogout}
       />
+
+      {isLogoutOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-black text-slate-900">Logout</h3>
+            <p className="mt-2 text-sm font-medium text-slate-500">
+              Do you want to log out and leave the bus driver console?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsLogoutOpen(false)}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-500 transition hover:bg-slate-50 active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleLogoutConfirm}
+                className="rounded-xl bg-rose-600 hover:bg-rose-700 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition active:scale-95"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

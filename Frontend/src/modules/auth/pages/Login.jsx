@@ -7,7 +7,7 @@ import apiClient, { authAPI } from "@food/api"
 import { setUnifiedAuthData, isUnifiedAuthenticated } from "@food/utils/auth"
 import { useSettings } from "../../Taxi/shared/context/SettingsContext"
 
-// const K9_LOGO = "/k9-logo.png"
+const K9_LOGO = "/k9-logo.png"
 const COMPANY_NAME = "K9 Rides"
 
 export default function UnifiedOTPFastLogin({ viewType = "auth" }) {

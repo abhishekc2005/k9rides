@@ -155,6 +155,15 @@ export const resolveConfiguredGatewayCredentials = async (gatewayKey) => {
     throw new ApiError(400, 'Unsupported payment gateway');
   }
 
+  // Direct environment fallback for development testing
+  if (gatewayKey === 'razor_pay' && env.razorpayKeyId && env.razorpayKeySecret) {
+    return {
+      keyId: env.razorpayKeyId,
+      keySecret: env.razorpayKeySecret,
+      environment: 'test'
+    };
+  }
+
   const settings = await ensureThirdPartySettings();
   const gateway = normalizeGatewayConfig(gatewayKey, settings?.payment?.[gatewayKey] || {});
 

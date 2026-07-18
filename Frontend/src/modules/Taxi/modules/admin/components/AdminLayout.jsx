@@ -112,13 +112,13 @@ const readAdminProfile = () => {
 
 const useCachedLogo = (src) => {
   const [cachedSrc, setCachedSrc] = useState(src);
-  
+
   useEffect(() => {
     if (!src || src.startsWith('data:')) {
       setCachedSrc(src);
       return;
     }
-    
+
     const cacheKey = `img_cache_${src}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
@@ -126,22 +126,22 @@ const useCachedLogo = (src) => {
     } else {
       setCachedSrc(src);
     }
-    
+
     fetch(src)
       .then(res => res.blob())
       .then(blob => {
         const reader = new FileReader();
         reader.onloadend = () => {
-           const base64data = reader.result;
-           if (base64data !== cached) {
-               try { localStorage.setItem(cacheKey, base64data); } catch(e) {}
-               setCachedSrc(base64data);
-           }
+          const base64data = reader.result;
+          if (base64data !== cached) {
+            try { localStorage.setItem(cacheKey, base64data); } catch (e) { }
+            setCachedSrc(base64data);
+          }
         }
         reader.readAsDataURL(blob);
       }).catch(() => setCachedSrc(src));
   }, [src]);
-  
+
   return cachedSrc;
 };
 
@@ -517,7 +517,7 @@ const ModeSwitcher = ({ mode, setMode }) => {
 
   const options = [
     { id: ADMIN_MODE, label: 'Admin', subtitle: 'Core control panel' },
-    // { id: OWNER_MODE, label: 'Owner', subtitle: 'Owner management modules' },
+    { id: OWNER_MODE, label: 'Owner', subtitle: 'Owner management modules' },
   ];
 
   const active = options.find((option) => option.id === mode) || options[0];
@@ -648,10 +648,10 @@ const AdminLayout = () => {
         }
       }
     };
-    
+
     document.addEventListener('input', handleInput, true);
     document.addEventListener('keydown', handleKeyDown, true);
-    
+
     return () => {
       document.removeEventListener('input', handleInput, true);
       document.removeEventListener('keydown', handleKeyDown, true);
@@ -865,7 +865,22 @@ const AdminLayout = () => {
               { label: 'Referral Translation', path: '/taxi/admin/referrals/translation', permission: 'referrals.view' },
             ],
           },
-          // { icon: Briefcase, label: 'Owner Management', path: '/taxi/admin/owners/dashboard', permission: 'owners.view' },
+          {
+            icon: Briefcase,
+            label: 'Owner Management',
+            subItems: [
+              { label: 'Owner Dashboard', path: '/taxi/admin/owners/dashboard', permission: 'owners.view' },
+              { label: 'Pending Owners', path: '/taxi/admin/owners/pending', permission: 'owners.view' },
+              { label: 'Manage Owners', path: '/taxi/admin/owners', permission: 'owners.view' },
+              { label: 'Fleet Drivers', path: '/taxi/admin/fleet/drivers', permission: 'owners.view' },
+              { label: 'Pending Fleet Drivers', path: '/taxi/admin/fleet/blocked', permission: 'owners.view' },
+              { label: 'Manage Fleet', path: '/taxi/admin/fleet/manage', permission: 'owners.view' },
+              { label: 'Owner Needed Document', path: '/taxi/admin/owners/documents', permission: 'owners.view' },
+              { label: 'Fleet Needed Document', path: '/taxi/admin/fleet/documents', permission: 'owners.view' },
+              { label: 'Deleted Owners', path: '/taxi/admin/owners/deleted', permission: 'owners.view' },
+              { label: 'Bookings', path: '/taxi/admin/owners/bookings', permission: 'owners.view' },
+            ],
+          },
           {
             icon: FileText,
             label: 'Report',

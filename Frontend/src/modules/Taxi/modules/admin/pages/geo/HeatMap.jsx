@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { GoogleMap, HeatmapLayer } from '@react-google-maps/api';
+import { GoogleMap, Circle } from '@react-google-maps/api';
 import { 
   ChevronRight, 
   Map as MapIcon, 
@@ -66,17 +66,15 @@ const HeatMap = () => {
   }, []);
 
   const heatmapData = useMemo(() => {
-    if (!zones.length || !window.google) return [];
+    if (!isLoaded || !zones.length) return [];
     return zones.flatMap((zone) => {
       const coord = zone.coordinates?.[0]?.[0] || [75.8577, 22.7196];
       const lat = Number(coord[1]);
       const lng = Number(coord[0]);
       
       return Array.from({ length: 12 }).map(() => ({
-        location: new window.google.maps.LatLng(
-          lat + (Math.random() - 0.5) * 0.08,
-          lng + (Math.random() - 0.5) * 0.08
-        ),
+        lat: lat + (Math.random() - 0.5) * 0.08,
+        lng: lng + (Math.random() - 0.5) * 0.08,
         weight: Math.random() * 10
       }));
     });
@@ -114,7 +112,22 @@ const HeatMap = () => {
                  <GoogleMap
                     mapContainerStyle={MAP_CONTAINER_STYLE} center={INDIA_CENTER} zoom={11} options={mapOptions}
                  >
-                    <HeatmapLayer data={heatmapData} options={{ opacity, radius }} />
+                    {heatmapData.map((point, index) => (
+                      <Circle
+                        key={index}
+                        center={{ lat: point.lat, lng: point.lng }}
+                        radius={radius * 180 * (point.weight / 10)}
+                        options={{
+                          strokeColor: '#FF4D7E',
+                          strokeOpacity: 0,
+                          strokeWeight: 0,
+                          fillColor: '#FF6B35',
+                          fillOpacity: opacity * (point.weight / 10) * 0.35,
+                          clickable: false,
+                          zIndex: 1
+                        }}
+                      />
+                    ))}
                  </GoogleMap>
               ) : (
                 <div className="h-[400px] flex flex-col items-center justify-center bg-gray-50 gap-4">

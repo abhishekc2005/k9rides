@@ -269,15 +269,17 @@ const VehicleType = ({ mode: propMode }) => {
 
     [...TRANSPORT_TYPE_OPTIONS, ...(Array.isArray(transportTypes) ? transportTypes : [])].forEach((item) => {
       const value = normalizeTransportType(item?.name || item?.transport_type || item?.id || '');
-      if (!value || value === 'pooling') return;
+      if (!value) return;
 
       normalized.set(value, {
         id: item?.id || item?._id || value,
         name: value,
         display_name:
           value === 'both'
-            ? 'Both'
-            : (item?.display_name || item?.label || value.charAt(0).toUpperCase() + value.slice(1)),
+            ? 'Taxi & Delivery'
+            : value === 'taxi'
+              ? 'Taxi'
+              : (item?.display_name || item?.label || value.charAt(0).toUpperCase() + value.slice(1)),
       });
     });
 

@@ -444,6 +444,7 @@ export const updateRideStatus = async (req, res) => {
     distanceChargeAmount: req.body.distanceChargeAmount,
     additionalCharge: req.body.additionalCharge,
     driverPaymentCollection: req.body.driverPaymentCollection,
+    otp: req.body.otp,
   });
 
   const payload = {
@@ -1263,6 +1264,23 @@ export const validateLocation = async (req, res, next) => {
     }
 
     res.json({ success: true, message: 'Location is valid' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPoolGroupById = async (req, res, next) => {
+  try {
+    const { poolGroupId } = req.params;
+    const { InstantPoolGroup } = await import('../../admin/models/InstantPoolGroup.js');
+    const group = await InstantPoolGroup.findById(poolGroupId);
+    if (!group) {
+      throw new ApiError(404, 'Pool group not found');
+    }
+    res.json({
+      success: true,
+      data: group,
+    });
   } catch (error) {
     next(error);
   }

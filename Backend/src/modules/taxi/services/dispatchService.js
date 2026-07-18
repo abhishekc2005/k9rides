@@ -145,7 +145,7 @@ const applyUserWalletAdjustment = async ({
   return { status: 'applied', amount: normalizedAmount };
 };
 
-const applyDriverWalletAdjustmentByReference = async ({
+export const applyDriverWalletAdjustmentByReference = async ({
   driverId,
   amount,
   rideId = null,
@@ -427,7 +427,7 @@ const emitToSocket = (socketId, event, payload) => {
   }
 };
 
-const emitToRoom = (room, event, payload) => {
+export const emitToRoom = (room, event, payload) => {
   if (ioInstance) {
     ioInstance.to(room).emit(event, payload);
   }
@@ -810,7 +810,7 @@ export const cancelRideByUser = async ({ rideId, userId, reason = '' }) => {
         $set: { currentRideId: null },
         $inc: { pending_cancellation_due: totalCancellationFee }
       }, { session }),
-      ride.driverId ? Driver.findByIdAndUpdate(ride.driverId, { isOnRide: false }, { session }) : Promise.resolve(),
+      (ride.driverId && !ride.isPoolRide) ? Driver.findByIdAndUpdate(ride.driverId, { isOnRide: false }, { session }) : Promise.resolve(),
     ]);
 
     await session.commitTransaction();
@@ -819,6 +819,11 @@ export const cancelRideByUser = async ({ rideId, userId, reason = '' }) => {
     throw error;
   } finally {
     session.endSession();
+  }
+
+  if (ride.isPoolRide && ride.poolGroupId) {
+    const { removeRideFromPoolGroup } = await import('./instantPoolingService.js');
+    await removeRideFromPoolGroup(ride.poolGroupId, ride._id, reason || 'User cancelled');
   }
 
   // Socket emissions (outside the transaction)

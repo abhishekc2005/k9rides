@@ -12,6 +12,7 @@ const Login = () => {
   const [phoneNumber, setPhoneNumber] = useState(() => String(location.state?.phone || '').replace(/\D/g, '').slice(-10));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(() => String(location.state?.error || ''));
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
   const appName = settings.general?.app_name || 'App';
   const userHomeRoute = useMemo(
@@ -32,8 +33,20 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!isValidPhone) return;
 
+    const nextErrors = {};
+    if (!phoneNumber.trim()) {
+      nextErrors.phone = 'Mobile number is required';
+    } else if (!/^\d{10}$/.test(phoneNumber.trim())) {
+      nextErrors.phone = 'Enter valid 10-digit number';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    setErrors({});
     setLoading(true);
     setError('');
 
@@ -61,31 +74,35 @@ const Login = () => {
           <label htmlFor="phone" className="text-xs font-bold text-gray-700 uppercase tracking-wider">
             Mobile Number
           </label>
-          <div className="relative group flex items-center transition-all">
-            <div className="absolute left-4 flex items-center pointer-events-none text-gray-500">
-               <span className="font-semibold">+91</span>
+          <div className="relative group flex flex-col transition-all">
+            <div className={`relative flex items-center border rounded-xl bg-[#F8F9FA] transition-all ${errors.phone ? 'border-rose-500 bg-rose-50/20' : 'border-gray-200 focus-within:border-[#F38F24] focus-within:ring-1 focus-within:ring-[#F38F24]'}`}>
+              <div className="absolute left-4 flex items-center pointer-events-none text-gray-500">
+                 <span className="font-semibold">+91</span>
+              </div>
+              <input
+                type="tel"
+                id="phone"
+                maxLength={10}
+                className="w-full pl-16 pr-12 py-4 bg-transparent rounded-xl text-[#1A1A1A] outline-none transition-all placeholder:text-gray-400 font-semibold text-lg"
+                placeholder="00000 00000"
+                value={phoneNumber}
+                onChange={(e) => {
+                  setPhoneNumber(e.target.value.replace(/\D/g, ''));
+                  if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
+                }}
+              />
+              <Phone size={20} className={`absolute right-4 ${errors.phone ? 'text-rose-500' : 'text-gray-400 group-focus-within:text-[#F38F24] transition-colors'}`} />
             </div>
-            <input
-              type="tel"
-              id="phone"
-              required
-              autoFocus
-              maxLength={10}
-              className="w-full pl-16 pr-4 py-4 bg-[#F8F9FA] border border-gray-200 rounded-xl text-[#1A1A1A] focus:border-[#F38F24] focus:ring-1 focus:ring-[#F38F24] outline-none transition-all placeholder:text-gray-400 font-semibold text-lg"
-              placeholder="00000 00000"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-            />
-            <Phone size={20} className="absolute right-4 text-gray-400 group-focus-within:text-[#F38F24] transition-colors" />
+            {errors.phone && <p className="ml-1 mt-1.5 text-[11px] font-bold text-rose-600">{errors.phone}</p>}
           </div>
         </div>
 
         <motion.button 
           whileHover={{ scale: 1.01, y: -2 }}
           whileTap={{ scale: 0.98 }}
-          disabled={!isValidPhone || loading}
+          disabled={loading}
           className={`w-full py-4 rounded-xl text-base font-bold transition-all flex items-center justify-center gap-2 ${
-            isValidPhone && !loading
+            !loading
             ? 'bg-[#1A1A1A] text-white hover:bg-black hover:shadow-lg' 
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}

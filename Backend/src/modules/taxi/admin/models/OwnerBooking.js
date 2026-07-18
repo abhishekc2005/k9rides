@@ -7,6 +7,11 @@ const ownerBookingSchema = new mongoose.Schema(
       ref: 'TaxiOwner',
       default: null,
     },
+    driver_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TaxiDriver',
+      default: null,
+    },
     booking_reference: {
       type: String,
       required: true,

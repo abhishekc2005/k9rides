@@ -1082,11 +1082,17 @@ export default function OrderTracking() {
         toast.success(successMessage);
         setShowCancelDialog(false);
         setCancellationReason("");
-        // Refresh order data
-        const orderResponse = await fetchOrderDetailsWithFallback({ force: true });
-        if (orderResponse.data?.success && orderResponse.data.data?.order) {
-          const apiOrder = orderResponse.data.data.order;
+        // Optimistically update order state with returned order data to prevent redundant fetch lag
+        const apiOrder = response.data?.data?.order;
+        if (apiOrder) {
           setOrder(transformOrderForTracking(apiOrder, order));
+        } else {
+          // Fallback to fetching order details if not returned in response
+          const orderResponse = await fetchOrderDetailsWithFallback({ force: true });
+          if (orderResponse.data?.success && orderResponse.data.data?.order) {
+            const fetchedOrder = orderResponse.data.data.order;
+            setOrder(transformOrderForTracking(fetchedOrder, order));
+          }
         }
       } else {
         toast.error(response.data?.message || 'Failed to cancel order');

@@ -24,6 +24,7 @@ import { createDefaultThirdPartySettings } from '../data/defaultThirdPartySettin
 import { RentalPackageType } from '../models/RentalPackageType.js';
 import { RentalBookingRequest } from '../models/RentalBookingRequest.js';
 import { PoolingRoute } from '../models/PoolingRoute.js';
+import { PoolingVehicle } from '../models/PoolingVehicle.js';
 import { RentalVehicleType } from '../models/RentalVehicleType.js';
 import { RentalQuoteRequest } from '../models/RentalQuoteRequest.js';
 import { SetPrice } from '../models/SetPrice.js';
@@ -49,6 +50,7 @@ import { OnboardingScreen } from '../models/OnboardingScreen.js';
 import { WithdrawalRequest } from '../models/WithdrawalRequest.js';
 import { SupportTicket } from '../../support/models/SupportTicket.js';
 import TaxiTransportType from '../models/TaxiTransportType.js';
+import Country from '../models/Country.js';
 import { comparePassword, hashPassword } from '../../driver/services/authService.js';
 import {
   applyDriverWalletAdjustment,
@@ -2196,6 +2198,15 @@ const serializeOwnerBooking = (item) => ({
       mobile: item.owner_id.mobile || '',
     }
     : null,
+  driver_id: item.driver_id
+    ? {
+      _id: item.driver_id._id || item.driver_id,
+      name: item.driver_id.name || '',
+      phone: item.driver_id.phone || '',
+      email: item.driver_id.email || '',
+      vehicleNumber: item.driver_id.vehicleNumber || '',
+    }
+    : null,
   booking_reference: item.booking_reference || '',
   customer_name: item.customer_name || '',
   customer_phone: item.customer_phone || '',
@@ -3428,6 +3439,8 @@ export const createUser = async (payload) => {
 };
 
 export const getOwnerDashboardData = async () => {
+  await ensureFleetOwnersSeeded();
+
   const [
     totalOwners,
     approvedOwners,
@@ -3435,9 +3448,9 @@ export const getOwnerDashboardData = async () => {
     approvedDrivers,
     todayRides,
   ] = await Promise.all([
-    Owner.countDocuments(),
+    Owner.countDocuments({}),
     Owner.countDocuments({ approve: true }),
-    Driver.countDocuments(),
+    Driver.countDocuments({}),
     Driver.countDocuments({ approve: true }),
     Ride.countDocuments({
       createdAt: {
@@ -3446,6 +3459,14 @@ export const getOwnerDashboardData = async () => {
       },
     }),
   ]);
+
+  console.log('[OwnerDashboardData] Counts fetched:', {
+    totalOwners,
+    approvedOwners,
+    totalDrivers,
+    approvedDrivers,
+    todayRides,
+  });
 
   return {
     total_owners: totalOwners,
@@ -3825,7 +3846,7 @@ export const adjustUserWallet = async (id, payload = {}) => {
   return { balance: Number(nextBalance.toFixed(2)) };
 };
 
-export const listDrivers = async ({ page = 1, limit = 50, status, search, approve, isOnline } = {}, currentAdmin = null) => {
+export const listDrivers = async ({ page = 1, limit = 50, status, search, approve, isOnline, owner_id } = {}, currentAdmin = null) => {
   const safePage = Number(page) || 1;
   const safeLimit = Number(limit) || 50;
   const start = (safePage - 1) * safeLimit;
@@ -3834,6 +3855,13 @@ export const listDrivers = async ({ page = 1, limit = 50, status, search, approv
   if (currentAdmin) {
     assertAdminPermission(currentAdmin, 'drivers.view', 'drivers');
     Object.assign(query, buildServiceLocationScopeQuery(currentAdmin));
+  }
+
+  if (owner_id) {
+    const castedOwnerId = toObjectId(owner_id);
+    if (castedOwnerId) {
+      query.owner_id = castedOwnerId;
+    }
   }
 
   if (status) {
@@ -5154,33 +5182,53 @@ export const listServiceLocations = async (currentAdmin = null) => {
   return ServiceLocation.find(query).sort({ createdAt: -1 }).lean();
 };
 
-export const listCountries = async () => {
-  const locations = await listServiceLocations();
-  const countriesFromLocations = locations
-    .map((item) => item.country)
-    .filter(Boolean)
-    .map((country) =>
-      typeof country === 'object'
-        ? country
-        : {
-          _id: nextId(),
-          name: String(country),
-          code: String(country).slice(0, 2).toUpperCase(),
-        },
-    );
-
-  const merged = [
-    { _id: nextId(), name: 'India', code: 'IN' },
-    { _id: nextId(), name: 'United Arab Emirates', code: 'AE' },
-    { _id: nextId(), name: 'United Kingdom', code: 'GB' },
-    { _id: nextId(), name: 'United States', code: 'US' },
-    ...countriesFromLocations,
+export const seedCountries = async () => {
+  const defaults = [
+    { name: 'India', code: 'IN' },
+    { name: 'United Arab Emirates', code: 'AE' },
+    { name: 'United Kingdom', code: 'GB' },
+    { name: 'United States', code: 'US' }
   ];
+  const results = [];
+  for (const item of defaults) {
+    const existing = await Country.findOne({ name: item.name });
+    if (!existing) {
+      results.push(await Country.create(item));
+    } else {
+      results.push(existing);
+    }
+  }
+  return results;
+};
 
-  return merged.filter(
-    (country, index, list) =>
-      list.findIndex((item) => item.name?.toLowerCase() === country.name?.toLowerCase()) === index,
-  );
+export const listCountries = async () => {
+  let list = await Country.find({ active: true }).lean();
+  if (list.length === 0) {
+    await seedCountries();
+    list = await Country.find({ active: true }).lean();
+  }
+  
+  const locations = await listServiceLocations();
+  const locationCountryNames = [...new Set(
+    locations
+      .map((item) => (typeof item.country === 'object' ? item.country?.name : item.country))
+      .filter(Boolean)
+      .map((name) => String(name).trim()),
+  )];
+
+  for (const name of locationCountryNames) {
+    const matched = list.some((item) => item.name?.toLowerCase() === name.toLowerCase());
+    if (!matched) {
+      const code = name.slice(0, 2).toUpperCase();
+      let dbCountry = await Country.findOne({ name });
+      if (!dbCountry) {
+        dbCountry = await Country.create({ name, code });
+      }
+      list.push(dbCountry.toObject ? dbCountry.toObject() : dbCountry);
+    }
+  }
+
+  return list;
 };
 
 export const createServiceLocation = async (payload, currentAdmin = null) => {
@@ -6736,6 +6784,7 @@ export const deleteOwner = async (id) => {
   export const listOwnerBookings = async () => {
     const items = await OwnerBooking.find()
       .populate('owner_id', 'full_name name email mobile')
+      .populate('driver_id', 'name phone email vehicleNumber')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -6753,6 +6802,7 @@ export const deleteOwner = async (id) => {
 
     const item = await OwnerBooking.create({
       owner_id: payload.owner_id ? toObjectId(payload.owner_id) : null,
+      driver_id: payload.driver_id ? toObjectId(payload.driver_id) : null,
       booking_reference: String(payload.booking_reference).trim(),
       customer_name: String(payload.customer_name).trim(),
       customer_phone: String(payload.customer_phone || '').trim(),
@@ -6770,6 +6820,7 @@ export const deleteOwner = async (id) => {
 
     const populatedItem = await OwnerBooking.findById(item._id)
       .populate('owner_id', 'full_name name email mobile')
+      .populate('driver_id', 'name phone email vehicleNumber')
       .lean();
 
     return serializeOwnerBooking(populatedItem);
@@ -6781,6 +6832,9 @@ export const deleteOwner = async (id) => {
 
     if (payload.owner_id !== undefined) {
       item.owner_id = payload.owner_id ? toObjectId(payload.owner_id) : null;
+    }
+    if (payload.driver_id !== undefined) {
+      item.driver_id = payload.driver_id ? toObjectId(payload.driver_id) : null;
     }
     if (payload.booking_reference !== undefined) {
       item.booking_reference = String(payload.booking_reference || '').trim();
@@ -6826,6 +6880,7 @@ export const deleteOwner = async (id) => {
 
     const populatedItem = await OwnerBooking.findById(item._id)
       .populate('owner_id', 'full_name name email mobile')
+      .populate('driver_id', 'name phone email vehicleNumber')
       .lean();
 
     return serializeOwnerBooking(populatedItem);
@@ -7924,7 +7979,7 @@ export const updateBusService = async (id, payload = {}, options = {}) => {
     ];
 
     const vehicles = vehicleIds.length
-      ? await RentalVehicleType.find({ _id: { $in: vehicleIds } }).lean()
+      ? await PoolingVehicle.find({ _id: { $in: vehicleIds } }).lean()
       : [];
     const vehicleMap = new Map(vehicles.map((item) => [String(item._id), item]));
 
@@ -7958,7 +8013,7 @@ export const updateBusService = async (id, payload = {}, options = {}) => {
       active: normalizedPayload.status === 'active',
     });
 
-    const vehicles = await RentalVehicleType.find({
+    const vehicles = await PoolingVehicle.find({
       _id: { $in: item.assignedVehicleTypeIds || [] },
     }).lean();
     const vehicleMap = new Map(vehicles.map((vehicle) => [String(vehicle._id), vehicle]));
@@ -8000,7 +8055,7 @@ export const updateBusService = async (id, payload = {}, options = {}) => {
     });
     await existingItem.save();
 
-    const vehicles = await RentalVehicleType.find({
+    const vehicles = await PoolingVehicle.find({
       _id: { $in: existingItem.assignedVehicleTypeIds || [] },
     }).lean();
     const vehicleMap = new Map(vehicles.map((vehicle) => [String(vehicle._id), vehicle]));
@@ -9736,9 +9791,13 @@ export const buildDriverDutyReport = async (query = {}) => {
   };
 
   export const listTransportTypes = async () => {
-    const types = await TaxiTransportType.find({ active: true, name: { $ne: 'pooling' } }).lean();
-    if (types.length === 0) {
-      return await seedTransportTypes();
+    let types = await TaxiTransportType.find({ active: true }).lean();
+    const hasPooling = types.some(t => t.name === 'pooling');
+    const bothType = types.find(t => t.name === 'both');
+    const needsBothUpdate = bothType && bothType.display_name !== 'Taxi & Delivery';
+    if (types.length === 0 || !hasPooling || !bothType || needsBothUpdate) {
+      await seedTransportTypes();
+      types = await TaxiTransportType.find({ active: true }).lean();
     }
     return types;
   };
@@ -9747,7 +9806,8 @@ export const buildDriverDutyReport = async (query = {}) => {
     const defaults = [
       { name: 'taxi', display_name: 'Taxi' },
       { name: 'delivery', display_name: 'Delivery' },
-      { name: 'both', display_name: 'Both (Taxi & Delivery)' }
+      { name: 'pooling', display_name: 'Pooling' },
+      { name: 'both', display_name: 'Taxi & Delivery' }
     ];
     
     const results = [];
@@ -9756,6 +9816,10 @@ export const buildDriverDutyReport = async (query = {}) => {
       if (!existing) {
         results.push(await TaxiTransportType.create(item));
       } else {
+        if (existing.display_name !== item.display_name) {
+          existing.display_name = item.display_name;
+          await existing.save();
+        }
         results.push(existing);
       }
     }

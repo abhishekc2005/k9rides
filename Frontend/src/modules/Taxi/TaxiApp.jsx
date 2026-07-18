@@ -494,11 +494,19 @@ const UserAccountInvalidationListener = () => {
       const currentAdminToken = localStorage.getItem('adminToken') || '';
 
       if (event.detail?.role === 'user' && (!staleToken || staleToken === currentUserToken)) {
+        toast.error('Your session has expired. Please login again.', {
+          id: 'auth-session-expired',
+          duration: 4000
+        });
         handleLogout();
         return;
       }
 
       if (event.detail?.role === 'admin' && (!staleToken || staleToken === currentAdminToken)) {
+        toast.error('Admin session expired. Please login again.', {
+          id: 'admin-session-expired',
+          duration: 4000
+        });
         socketService.disconnect();
         navigate('/admin/login');
       }
@@ -1115,9 +1123,9 @@ function TaxiApp() {
               <Route path="trips" element={<AdminTrips />} />
               <Route path="deliveries" element={<AdminDeliveries />} />
               <Route path="ongoing" element={<AdminOngoing />} />
-              <Route path="bus-service" element={<AdminBusServiceManager />} />
-              <Route path="bus-service/create" element={<AdminBusServiceManager mode="create" />} />
-              <Route path="bus-service/edit/:id" element={<AdminBusServiceManager mode="edit" />} />
+              <Route path="bus-service" element={<AdminBusServiceManager basePath="/taxi/admin/bus-service" />} />
+              <Route path="bus-service/create" element={<AdminBusServiceManager mode="create" basePath="/taxi/admin/bus-service" />} />
+              <Route path="bus-service/edit/:id" element={<AdminBusServiceManager mode="edit" basePath="/taxi/admin/bus-service" />} />
               <Route path="bus-service/commission" element={<AdminBusCommissionManager />} />
               <Route path="bus-service/bookings" element={<AdminBusBookingManager />} />
               <Route path="bus-service/:id" element={<AdminBusServiceDetails />} />
@@ -1293,7 +1301,6 @@ function TaxiApp() {
               />
 
               {/* Owner Management */}
-              {/*
               <Route
                 path="owners/dashboard"
                 element={<AdminOwnerDashboard />}
@@ -1349,7 +1356,6 @@ function TaxiApp() {
                 path="owners/bookings"
                 element={<AdminOwnerBookings />}
               />
-              */}
               <Route
                 path="referrals/config"
                 element={
