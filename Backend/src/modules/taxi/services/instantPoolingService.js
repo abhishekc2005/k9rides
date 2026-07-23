@@ -94,7 +94,8 @@ export const addRideToPoolGroup = async (poolGroupId, newRide) => {
     {
       _id: poolGroupId,
       status: { $nin: ['completed', 'cancelled'] },
-      $expr: { $lte: [{ $add: ['$occupiedSeats', requiredSeats] }, '$totalCapacity'] },
+      // $ifNull so legacy groups without totalCapacity default to 4 instead of failing every claim.
+      $expr: { $lte: [{ $add: ['$occupiedSeats', requiredSeats] }, { $ifNull: ['$totalCapacity', 4] }] },
     },
     { $inc: { occupiedSeats: requiredSeats } },
     { new: true }
@@ -106,56 +107,64 @@ export const addRideToPoolGroup = async (poolGroupId, newRide) => {
   const releaseSeats = () =>
     InstantPoolGroup.updateOne({ _id: poolGroupId }, { $inc: { occupiedSeats: -requiredSeats } });
 
-  // Populate active rides with user details for sequence name rendering
-  const populatedActiveRides = await Ride.find({
-    _id: { $in: [...group.activeRides.map(r => r._id), newRide._id] }
-  }).populate('userId', 'name');
+  // Everything after the seat claim must release the seats on ANY failure, or the claim leaks
+  // and the group is permanently under-capacity.
+  let updatedGroup;
+  try {
+    // Populate active rides with user details for sequence name rendering
+    const populatedActiveRides = await Ride.find({
+      _id: { $in: [...group.activeRides.map(r => r._id), newRide._id] }
+    }).populate('userId', 'name');
 
-  const optimalSeq = findOptimalRouteSequence(
-    driver.location.coordinates,
-    populatedActiveRides,
-    {
-      maxDetourMeters: Number(settings.max_detour_meters || 5000),
-      maxEtaIncreaseMinutes: Number(settings.max_eta_increase_minutes || 15),
+    const optimalSeq = findOptimalRouteSequence(
+      driver.location.coordinates,
+      populatedActiveRides,
+      {
+        maxDetourMeters: Number(settings.max_detour_meters || 5000),
+        maxEtaIncreaseMinutes: Number(settings.max_eta_increase_minutes || 15),
+      }
+    );
+
+    // If sequence optimization returns empty, detour rules were violated — give the seats back.
+    if (optimalSeq.length === 0) {
+      await releaseSeats();
+      return false;
     }
-  );
 
-  // If sequence optimization returns empty, detour rules were violated — give the seats back.
-  if (optimalSeq.length === 0) {
-    await releaseSeats();
-    return false;
+    // Atomically attach the ride + bump route version (avoids clobbering a concurrent join's array).
+    updatedGroup = await InstantPoolGroup.findByIdAndUpdate(
+      poolGroupId,
+      {
+        $push: { activeRides: newRide._id },
+        $set: { routeSequence: optimalSeq, status: 'active' },
+        $inc: { routeVersion: 1 },
+      },
+      { new: true }
+    );
+
+    // Update driver details
+    await Driver.findByIdAndUpdate(group.driverId, {
+      poolOccupiedSeats: updatedGroup.occupiedSeats,
+      activePoolRideCount: updatedGroup.activeRides.length,
+    });
+
+    // Link ride to pool group
+    newRide.poolGroupId = group._id;
+    newRide.status = 'accepted';
+    newRide.liveStatus = 'accepted';
+    newRide.driverId = group.driverId;
+    newRide.routeVersion = updatedGroup.routeVersion;
+    await newRide.save();
+
+    // Increment route version on existing rides too
+    await Ride.updateMany(
+      { _id: { $in: updatedGroup.activeRides } },
+      { $set: { routeVersion: updatedGroup.routeVersion } }
+    );
+  } catch (err) {
+    await releaseSeats().catch(() => {});
+    throw err;
   }
-
-  // Atomically attach the ride + bump route version (avoids clobbering a concurrent join's array).
-  const updatedGroup = await InstantPoolGroup.findByIdAndUpdate(
-    poolGroupId,
-    {
-      $push: { activeRides: newRide._id },
-      $set: { routeSequence: optimalSeq, status: 'active' },
-      $inc: { routeVersion: 1 },
-    },
-    { new: true }
-  );
-
-  // Update driver details
-  await Driver.findByIdAndUpdate(group.driverId, {
-    poolOccupiedSeats: updatedGroup.occupiedSeats,
-    activePoolRideCount: updatedGroup.activeRides.length,
-  });
-
-  // Link ride to pool group
-  newRide.poolGroupId = group._id;
-  newRide.status = 'accepted';
-  newRide.liveStatus = 'accepted';
-  newRide.driverId = group.driverId;
-  newRide.routeVersion = updatedGroup.routeVersion;
-  await newRide.save();
-
-  // Increment route version on existing rides too
-  await Ride.updateMany(
-    { _id: { $in: updatedGroup.activeRides } },
-    { $set: { routeVersion: updatedGroup.routeVersion } }
-  );
 
   auditLog('Passenger Joined', { poolGroupId: group._id, rideId: newRide._id });
 

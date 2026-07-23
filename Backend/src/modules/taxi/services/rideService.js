@@ -52,6 +52,31 @@ const clearUserActiveRideIfPresent = async (user) => {
     User.findByIdAndUpdate(activeRide.userId, { currentRideId: null }),
   ]);
 
+  // Stop the old ride's dispatch flow (else retry timers keep firing) and tell the assigned/notified
+  // drivers to drop it. Dynamic import avoids a circular dependency with dispatchService.
+  try {
+    const { stopDispatchFlow, getDispatchState, emitToDriver, emitToRoom, getRideRoom } =
+      await import('./dispatchService.js');
+    const state = getDispatchState(activeRide._id);
+    stopDispatchFlow(activeRide._id);
+    const notify = new Set([
+      ...(Array.isArray(state?.notifiedDriverIds) ? state.notifiedDriverIds.map(String) : []),
+      ...(activeRide.driverId ? [String(activeRide.driverId)] : []),
+    ]);
+    for (const dId of notify) {
+      emitToDriver(dId, 'rideRequestClosed', {
+        rideId: String(activeRide._id),
+        reason: 'user-started-new-ride',
+      });
+    }
+    emitToRoom(getRideRoom(activeRide._id), 'rideCancelled', {
+      rideId: String(activeRide._id),
+      reason: 'A new ride request was created.',
+    });
+  } catch (err) {
+    logger.warn(`Failed to stop dispatch for superseded ride ${activeRide._id}: ${err.message}`);
+  }
+
   user.currentRideId = null;
 };
 
@@ -1887,15 +1912,18 @@ export const updateRideLifecycle = async ({ rideId, driverId, nextStatus, paymen
       const settings = await getInstantPoolingSettings();
       const remainingRides = await Ride.find({ _id: { $in: group.activeRides } }).populate('userId', 'name');
 
-      group.routeSequence = findOptimalRouteSequence(
-        driver.location.coordinates,
-        remainingRides,
-        {
-          maxDetourMeters: Number(settings.max_detour_meters || 5000),
-          maxEtaIncreaseMinutes: Number(settings.max_eta_increase_minutes || 15),
-        }
-      );
-      await group.save();
+      // Guard: a driver with no GPS fix would throw on .location.coordinates and block the start.
+      if (driver?.location?.coordinates) {
+        group.routeSequence = findOptimalRouteSequence(
+          driver.location.coordinates,
+          remainingRides,
+          {
+            maxDetourMeters: Number(settings.max_detour_meters || 5000),
+            maxEtaIncreaseMinutes: Number(settings.max_eta_increase_minutes || 15),
+          }
+        );
+        await group.save();
+      }
 
       const { broadcastPoolUpdate } = await import('./instantPoolingService.js');
       broadcastPoolUpdate(group);

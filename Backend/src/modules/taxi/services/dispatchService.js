@@ -346,7 +346,10 @@ const settleDriverCancellationFee = async (ride, session) => {
     return { feeAmount: 0, driverDebitStatus: 'none', userCreditStatus: 'none', driverWalletResult: null };
   }
 
-  const feeReferenceBase = `ride-cancel:driver:${String(ride._id)}`;
+  // Include the driverId so that after a cancel + re-dispatch, a SECOND driver cancelling gets a
+  // distinct reference key — otherwise the user-credit (deduped per {userId, rideId}) is skipped
+  // and the rider is never compensated for the second cancellation.
+  const feeReferenceBase = `ride-cancel:driver:${String(ride._id)}:${String(ride.driverId)}`;
   const driverDebit = await applyDriverWalletAdjustmentByReference({
     driverId: ride.driverId,
     amount: -feeAmount,
@@ -657,6 +660,12 @@ const closeRideAsUnmatched = async (rideId) => {
     });
   }
 
+  // Free the driver if one was ever assigned (e.g. after a cancel+re-dispatch that went unmatched),
+  // otherwise the driver can be left isOnRide:true with no active ride.
+  if (ride.driverId) {
+    await Driver.findByIdAndUpdate(ride.driverId, { isOnRide: false });
+  }
+
   await User.findByIdAndUpdate(ride.userId, { currentRideId: null });
 
   emitToRoom(getUserRoom(ride.userId), 'rideCancelled', {
@@ -757,7 +766,14 @@ export const cancelRideByUser = async ({ rideId, userId, reason = '' }) => {
       return null;
     }
 
-    if (ride.startedAt || ['started', 'in_trip', 'completed'].includes(String(ride.status || '').toLowerCase()) || ['started', 'in_trip', 'completed'].includes(String(ride.liveStatus || '').toLowerCase())) {
+    // Block cancellation once the trip is underway. Key on explicit statuses (incl. 'ongoing'/'arrived')
+    // as well as startedAt, so a ride advanced without startedAt still can't be cancelled for a fee.
+    const blockedStatuses = ['started', 'in_trip', 'ongoing', 'arrived', 'completed'];
+    if (
+      ride.startedAt ||
+      blockedStatuses.includes(String(ride.status || '').toLowerCase()) ||
+      blockedStatuses.includes(String(ride.liveStatus || '').toLowerCase())
+    ) {
       throw new ApiError(400, 'Ride cancellation is not allowed after the trip has started.');
     }
 
@@ -1141,8 +1157,11 @@ export const cancelActiveRideByDriver = async ({ rideId, driverId, reason = '' }
   }
 
   // Exclude the cancelling driver from re-dispatch, then re-run the search.
-  markDriverRejectedFromDispatch(rideId, driverId);
+  // Order matters: stop FIRST (clears any stale dispatch state), THEN record the rejection so it
+  // survives into the fresh dispatch. We call dispatchAttempt directly below rather than
+  // startDispatchFlow, because startDispatchFlow calls stopDispatchFlow again and would wipe this.
   stopDispatchFlow(rideId);
+  markDriverRejectedFromDispatch(rideId, driverId);
 
   const cancelReason = String(reason || '').trim() || 'The assigned driver cancelled. Finding you another driver.';
 
@@ -1174,10 +1193,11 @@ export const cancelActiveRideByDriver = async ({ rideId, driverId, reason = '' }
     });
   }
 
-  // Re-dispatch to a new driver so the rider keeps their request.
+  // Re-dispatch to a new driver so the rider keeps their request. dispatchAttempt (not
+  // startDispatchFlow) preserves the rejectedDriverIds seeded above so the canceller isn't re-offered.
   const rideForDispatch = await Ride.findById(ride._id).populate('userId', 'name phone countryCode');
   if (rideForDispatch && rideForDispatch.status === RIDE_STATUS.SEARCHING) {
-    await startDispatchFlow(rideForDispatch);
+    await dispatchAttempt(rideForDispatch._id, 0);
   }
 
   return { ride, settlement: cancellationSettlement };
@@ -1432,6 +1452,19 @@ export const notifyRideAccepted = async (ride) => {
   );
 
   if (!populatedRide) {
+    return;
+  }
+
+  // Guard: driverId populate can yield null (driver deleted between accept-commit and this read);
+  // dereferencing populatedRide.driverId._id below would throw and swallow the rider notification.
+  if (!populatedRide.driverId || !populatedRide.driverId._id) {
+    console.warn(`[notifyRideAccepted] Ride ${populatedRide._id} has no populated driver; skipping driver-room emits`);
+    emitToRoom(getRideRoom(populatedRide._id), SOCKET_EVENTS.RIDE_STATUS_UPDATED, {
+      rideId: String(populatedRide._id),
+      status: populatedRide.status,
+      liveStatus: populatedRide.liveStatus,
+      acceptedAt: populatedRide.acceptedAt,
+    });
     return;
   }
 

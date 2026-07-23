@@ -314,12 +314,21 @@ export async function notifyRestaurantNewOrder(orderDoc) {
       },
     );
 
-    // Trigger Petpooja Order Push (Asynchronous / Non-blocking)
-    if (config.petpoojaEnabled) {
-      enqueueOrderEvent('PETPOOJA_ORDER_PUSH', {
-        orderMongoId: orderDoc._id.toString(),
-        orderId: orderDoc.order_id || orderDoc._id.toString()
-      });
+    // Trigger Petpooja Order Push (Asynchronous / Non-blocking).
+    // Use the admin-managed setting (DB, with env fallback) — not just config.petpoojaEnabled —
+    // so enabling PetPooja from the admin UI actually pushes orders. Dynamic import avoids a
+    // circular dependency between order.helpers and petpooja.service.
+    try {
+      const { getPetpoojaSettings } = await import('./petpooja.service.js');
+      const petpoojaSettings = await getPetpoojaSettings();
+      if (petpoojaSettings.enabled) {
+        enqueueOrderEvent('PETPOOJA_ORDER_PUSH', {
+          orderMongoId: orderDoc._id.toString(),
+          orderId: orderDoc.order_id || orderDoc._id.toString()
+        });
+      }
+    } catch (petpoojaErr) {
+      logger.warn(`[Petpooja] Could not resolve settings for order push: ${petpoojaErr.message}`);
     }
   } catch {
     // Do not block order/payment flow if notification fails.
