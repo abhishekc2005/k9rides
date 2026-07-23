@@ -1252,18 +1252,11 @@ const dispatchAttempt = async (rideId, attemptIndex = 0) => {
 
     const rejectedDriverIds = new Set(dispatchState.rejectedDriverIds);
     const notifiedDriverIds = new Set(dispatchState.notifiedDriverIds);
-    
-    console.log(`[dispatchAttempt] Checking driver filtering for rideId=${rideId}. rejectedDriverIds=`, Array.from(rejectedDriverIds), `notifiedDriverIds=`, Array.from(notifiedDriverIds));
-    
+
     const availableDrivers = drivers.filter((driver) => {
       const driverId = String(driver._id);
-      const isRejected = rejectedDriverIds.has(driverId);
-      const isNotified = notifiedDriverIds.has(driverId);
-      console.log(`[dispatchAttempt] Driver ${driverId} check: isRejected=${isRejected}, isNotified=${isNotified}`);
-      return !isRejected && !isNotified;
+      return !rejectedDriverIds.has(driverId) && !notifiedDriverIds.has(driverId);
     });
-
-    console.log(`[dispatchAttempt] rideId=${rideId}, drivers.length=${drivers.length}, availableDrivers.length=${availableDrivers.length}`);
 
     const targetDrivers = dispatchConfig.dispatchType === 'broadcast'
       ? availableDrivers
